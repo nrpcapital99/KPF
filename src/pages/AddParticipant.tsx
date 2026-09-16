@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TopBar } from "../components/Layout";
 import { Field, Select, Stepper } from "../components/ui";
 import { ArrowLeft, CheckIcon } from "../components/icons";
 import { createParticipant, emailTaken, listExpertiseAreas, listLocations } from "../data/api";
-import type { ExpertiseArea, NewParticipantInput } from "../types";
+import { HOURS_CHOICES } from "../data/config";
+import type { NewParticipantInput } from "../types";
 
 const STEPS = ["Basic Info", "Expertise", "Availability"];
-
-const HOURS_CHOICES = [2, 4, 5, 8, 10, 12, 15, 20, 25];
 
 type Errors = Partial<Record<keyof NewParticipantInput, string>>;
 
@@ -16,8 +15,8 @@ export default function AddParticipant() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [areas, setAreas] = useState<ExpertiseArea[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
+  const areas = listExpertiseAreas();
+  const locations = listLocations();
   const [errors, setErrors] = useState<Errors>({});
 
   const [form, setForm] = useState<NewParticipantInput>({
@@ -30,11 +29,6 @@ export default function AddParticipant() {
     availabilityHoursPerWeek: 0,
     consentToContact: false,
   });
-
-  useEffect(() => {
-    listExpertiseAreas().then(setAreas);
-    listLocations().then(setLocations);
-  }, []);
 
   function set<K extends keyof NewParticipantInput>(
     key: K,

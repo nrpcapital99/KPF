@@ -1,20 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { isStaff, useCurrentUser, useStore } from "../auth/session";
 import { TopBar } from "../components/Layout";
 import PeopleTable from "../components/PeopleTable";
-import { EmptyState, SkeletonRows } from "../components/ui";
+import { EmptyState } from "../components/ui";
 import {
   ArrowRight,
+  CalendarIcon,
   ClockIcon,
   FilterIcon,
-  HeartIcon,
+  HandIcon,
+  InboxIcon,
   PlusIcon,
-  SparkIcon,
-  TrendUp,
   UsersIcon,
 } from "../components/icons";
-import { getCurrentUser, getStats, listRecentParticipants } from "../data/api";
-import type { DashboardStats, Participant } from "../types";
+import {
+  getAdminStats,
+  getVolunteerStats,
+  listRecentParticipants,
+} from "../data/api";
 
 function greeting(d = new Date()) {
   const h = d.getHours();
@@ -24,136 +27,171 @@ function greeting(d = new Date()) {
 }
 
 export default function Dashboard() {
-  const me = getCurrentUser();
+  useStore();
+  const me = useCurrentUser();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recent, setRecent] = useState<Participant[] | null>(null);
-  const [search, setSearch] = useState("");
+  const staff = isStaff(me);
+  const stats = staff ? getAdminStats() : getVolunteerStats(me.id);
+  const recent = staff ? listRecentParticipants(5) : [];
+  const firstName = me.fullName.split(" ")[0];
 
-  useEffect(() => {
-    getStats().then(setStats);
-    listRecentParticipants(5).then(setRecent);
-  }, []);
-
-  const firstName = useMemo(() => me.fullName.split(" ")[0], [me.fullName]);
-
-  // Typing in the header search jumps straight to the directory.
-  function onSearch(value: string) {
-    setSearch(value);
-    if (value.trim().length > 1) {
-      navigate(`/people?q=${encodeURIComponent(value.trim())}`);
-    }
-  }
-
-  const cards = [
-    {
-      label: "Total Participants",
-      value: stats?.totalParticipants,
-      delta: stats?.deltas.totalParticipants,
-      tile: "var(--tile-blue)",
-      color: "var(--tag-blue-fg)",
-      Icon: UsersIcon,
-    },
-    {
-      label: "Active This Month",
-      value: stats?.activeThisMonth,
-      delta: stats?.deltas.activeThisMonth,
-      tile: "var(--tile-amber)",
-      color: "var(--amber)",
-      Icon: SparkIcon,
-    },
-    {
-      label: "Total Hours Committed",
-      value: stats ? `${stats.totalHoursCommitted} hrs` : undefined,
-      delta: stats?.deltas.totalHoursCommitted,
-      tile: "var(--tile-green)",
-      color: "var(--green)",
-      Icon: ClockIcon,
-    },
-    {
-      label: "Active Expertise Areas",
-      value: stats?.activeExpertiseAreas,
-      delta: stats?.deltas.activeExpertiseAreas,
-      deltaLabel: "new this month",
-      tile: "var(--tile-pink)",
-      color: "var(--red)",
-      Icon: HeartIcon,
-    },
-  ];
+  const cards = staff
+    ? [
+        {
+          label: "Total participants",
+          value: "totalParticipants" in stats ? stats.totalParticipants : 0,
+          tile: "var(--tile-blue)",
+          color: "var(--tag-blue-fg)",
+          Icon: UsersIcon,
+        },
+        {
+          label: "Active participants",
+          value: "activeParticipants" in stats ? stats.activeParticipants : 0,
+          tile: "var(--tile-green)",
+          color: "var(--green)",
+          Icon: UsersIcon,
+        },
+        {
+          label: "Account requests",
+          value: "pendingRequests" in stats ? stats.pendingRequests : 0,
+          tile: "var(--tile-amber)",
+          color: "var(--amber)",
+          Icon: InboxIcon,
+        },
+        {
+          label: "Open slots",
+          value: "openSlots" in stats ? stats.openSlots : 0,
+          tile: "var(--tile-pink)",
+          color: "var(--red)",
+          Icon: CalendarIcon,
+        },
+      ]
+    : [
+        {
+          label: "Upcoming commitments",
+          value: "upcomingCommitments" in stats ? stats.upcomingCommitments : 0,
+          tile: "var(--tile-blue)",
+          color: "var(--tag-blue-fg)",
+          Icon: CalendarIcon,
+        },
+        {
+          label: "Requests awaiting review",
+          value: "pendingRequests" in stats ? stats.pendingRequests : 0,
+          tile: "var(--tile-amber)",
+          color: "var(--amber)",
+          Icon: InboxIcon,
+        },
+        {
+          label: "Hours logged",
+          value: "hoursLogged" in stats ? `${stats.hoursLogged} hrs` : "0 hrs",
+          tile: "var(--tile-green)",
+          color: "var(--green)",
+          Icon: ClockIcon,
+        },
+        {
+          label: "Open opportunities",
+          value: "openOpportunities" in stats ? stats.openOpportunities : 0,
+          tile: "var(--tile-pink)",
+          color: "var(--red)",
+          Icon: HandIcon,
+        },
+      ];
 
   return (
     <>
       <TopBar
         title={`${greeting()}, ${firstName}`}
-        subtitle="Here's a snapshot of our foundation community."
-        search={search}
-        onSearch={onSearch}
+        subtitle={
+          staff
+            ? "Here's a snapshot of the foundation community."
+            : "Here's what is happening with your volunteering."
+        }
+        search=""
+        onSearch={(value) => {
+          if (value.trim().length > 1) {
+            navigate(`/people?q=${encodeURIComponent(value.trim())}`);
+          }
+        }}
       />
 
       <div className="content">
-        <section className="stats" aria-label="Community summary">
-          {cards.map((c) => (
-            <article key={c.label} className="card stat">
-              <span className="stat__tile" style={{ background: c.tile, color: c.color }}>
-                <c.Icon />
+        <section className="stats" aria-label="Summary">
+          {cards.map((card) => (
+            <article key={card.label} className="card stat">
+              <span
+                className="stat__tile"
+                style={{ background: card.tile, color: card.color }}
+              >
+                <card.Icon />
               </span>
               <div>
-                <p className="stat__label">{c.label}</p>
-                {c.value === undefined ? (
-                  <div className="skeleton" style={{ height: 34, width: 72, margin: "4px 0 6px" }} />
-                ) : (
-                  <p className="stat__value">{c.value}</p>
-                )}
-                {c.delta !== undefined && (
-                  <p className="stat__delta">
-                    <TrendUp />
-                    {c.deltaLabel
-                      ? `${c.delta} ${c.deltaLabel}`
-                      : `${c.delta}% from last month`}
-                  </p>
-                )}
+                <p className="stat__label">{card.label}</p>
+                <p className="stat__value">{card.value}</p>
               </div>
             </article>
           ))}
         </section>
 
-        <section className="card panel" aria-label="Our people">
-          <div className="panel__head">
-            <h2 className="panel__title">Our People</h2>
-            <div className="panel__actions">
-              <Link to="/people/new" className="btn btn--primary">
-                <PlusIcon /> Add Participant
-              </Link>
-              <Link to="/people" className="btn btn--ghost">
-                <FilterIcon /> Filters
+        {staff ? (
+          <section className="card panel" aria-label="Our people">
+            <div className="panel__head">
+              <h2 className="panel__title">Recently joined</h2>
+              <div className="panel__actions">
+                <Link to="/people/new" className="btn btn--primary">
+                  <PlusIcon /> Add participant
+                </Link>
+                <Link to="/people" className="btn btn--ghost">
+                  <FilterIcon /> Directory
+                </Link>
+              </div>
+            </div>
+
+            {recent.length === 0 ? (
+              <EmptyState
+                title="No participants yet"
+                message="Approve a volunteer request or add the first participant directly."
+                action={
+                  <Link to="/approvals" className="btn btn--primary">
+                    Review account requests
+                  </Link>
+                }
+              />
+            ) : (
+              <PeopleTable people={recent} compact />
+            )}
+
+            <div
+              style={{
+                padding: "var(--sp-4) var(--sp-6)",
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <Link to="/people" className="btn btn--text">
+                View all <ArrowRight />
               </Link>
             </div>
-          </div>
-
-          {recent === null ? (
-            <SkeletonRows rows={5} />
-          ) : recent.length === 0 ? (
+          </section>
+        ) : (
+          <section className="card panel">
+            <div className="panel__head">
+              <h2 className="panel__title">Ready to help?</h2>
+              <Link to="/opportunities" className="btn btn--primary">
+                <HandIcon /> Browse opportunities
+              </Link>
+            </div>
             <EmptyState
-              title="No participants yet"
-              message="Add the first member of the community to get started."
+              title="Choose work that fits your time and skills"
+              message="Open opportunities show the date, location, skills needed, and available capacity."
+              action={
+                <Link to="/commitments" className="btn btn--ghost">
+                  View my commitments
+                </Link>
+              }
             />
-          ) : (
-            <PeopleTable people={recent} compact />
-          )}
-
-          <div
-            style={{
-              padding: "var(--sp-4) var(--sp-6)",
-              borderTop: "1px solid var(--border)",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Link to="/people" className="btn btn--text">
-              View all <ArrowRight />
-            </Link>
-          </div>
-        </section>
+          </section>
+        )}
       </div>
     </>
   );

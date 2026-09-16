@@ -1,25 +1,26 @@
 import { Link } from "react-router-dom";
+import { isStaff, useCurrentUser } from "../auth/session";
 import { TopBar } from "../components/Layout";
 import { Avatar } from "../components/ui";
 import {
   ArrowRight,
-  ResourcesIcon,
   UserIcon,
   UsersIcon,
 } from "../components/icons";
-import { getCurrentUser } from "../data/api";
 
 /**
  * Doubles as the "More" destination in the mobile tab bar, which is why it
  * links out to the sidebar items that don't fit in four tabs.
  */
 export default function Settings() {
-  const me = getCurrentUser();
+  const me = useCurrentUser();
 
   const links = [
     { to: "/profile", label: "My Profile", hint: "Your details and availability", Icon: UserIcon },
     { to: "/people", label: "People Directory", hint: "Everyone in the community", Icon: UsersIcon },
-    { to: "/resources", label: "Resources", hint: "Handbooks and toolkits", Icon: ResourcesIcon },
+    ...(isStaff(me)
+      ? [{ to: "/projects", label: "Projects / Teams", hint: "Current foundation work", Icon: UsersIcon }]
+      : []),
   ];
 
   return (
@@ -98,7 +99,7 @@ export default function Settings() {
           <p style={{ color: "var(--ink-2)", fontSize: "var(--text-sm)", maxWidth: "36ch" }}>
             Kanak Parakh Foundation participant directory.
             <br />
-            Running on seed data — connect Firebase Data Connect to go live.
+            Live data is secured by Firebase Authentication and stored in Cloud Firestore.
           </p>
         </section>
       </div>

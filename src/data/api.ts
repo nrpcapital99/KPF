@@ -1,46 +1,248 @@
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from "firebase/auth";
+import {
+  doc,
+  runTransaction,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from "firebase/firestore";
+import { getFirebase } from "../lib/firebase";
 import type {
+  AccountRequest,
+  AccountRequestInput,
+  AccountRequestStatus,
   DashboardStats,
+  MemberRole,
   NewParticipantInput,
   Participant,
   ParticipantFilters,
+  ParticipantStatus,
   Project,
-  Resource,
+  SignupStatus,
+  Slot,
+  SlotInput,
+  SlotSignup,
+  SlotWithCounts,
+  VolunteerStats,
 } from "../types";
-import * as seed from "./mock";
+import { EXPERTISE_AREAS, LOCATIONS } from "./config";
+import { newId, nowIso, read, todayIso } from "./store";
 
-/**
- * The single seam between the UI and the database.
- *
- * Today every function below reads from the in-memory seed data. When the
- * Cloud SQL instance is live and `firebase dataconnect:sdk:generate` has run,
- * swap each body for the generated hook — the signatures are deliberately
- * shaped to match the operations in dataconnect/connector/*.gql. No component
- * imports mock data directly, so nothing else has to change.
- *
- * e.g. listParticipants() -> useSearchParticipants({ ... })
- *      getStats()         -> useDashboardStats()
- *      createParticipant()-> useCreateParticipant()
- */
+/* --- Config -------------------------------------------------------------- */
 
-const LATENCY_MS = 180;
-const delay = <T,>(value: T): Promise<T> =>
-  new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
+export const listExpertiseAreas = () => EXPERTISE_AREAS;
+export const listLocations = () => LOCATIONS;
 
-// Mutable working copy so the Add Participant wizard has somewhere to write.
-let people: Participant[] = [...seed.participants];
-
-/* --- Reads --------------------------------------------------------------- */
-
-export function getCurrentUser(): Participant {
-  return seed.currentUser;
+export function expertiseByIds(ids: string[]) {
+  return EXPERTISE_AREAS.filter((area) => ids.includes(area.id));
 }
 
-export function listExpertiseAreas() {
-  return delay(seed.expertiseAreas);
+/* --- Auth ---------------------------------------------------------------- */
+
+export function needsSetup() {
+  return read().configured === false;
 }
 
-export function listLocations() {
-  return delay(seed.LOCATIONS);
+export function currentUser(): Participant | null {
+  return read().me;
+}
+
+export async function bootstrapFirstAdmin(input: {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  location?: string;
+}): Promise<Participant> {
+  const { auth, db } = getFirebase();
+  const credential = await createUserWithEmailAndPassword(
+    auth,
+    input.email.trim().toLowerCase(),
+    input.password,
+  );
+  const uid = credential.user.uid;
+  const admin: Participant = {
+    id: uid,
+    authUid: uid,
+    fullName: input.fullName.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone.trim(),
+    location: input.location || null,
+    avatarUrl: null,
+    about: null,
+    role: "ADMIN",
+    status: "ACTIVE",
+    availabilityHoursPerWeek: 0,
+    consentToContact: true,
+    joinedOn: todayIso(),
+    expertise: [],
+  };
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const configRef = doc(db, "config", "foundation");
+      const config = await transaction.get(configRef);
+      if (config.exists()) throw new Error("The foundation is already set up.");
+
+      transaction.set(configRef, {
+        configuredAt: nowIso(),
+        bootstrapUid: uid,
+        name: "Kanak Parakh Foundation",
+      });
+      transaction.set(doc(db, "participants", uid), admin);
+    });
+    return admin;
+  } catch (error) {
+    await deleteUser(credential.user).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function signIn(email: string, password: string) {
+  const { auth } = getFirebase();
+  return signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+}
+
+export async function signOut() {
+  const { auth } = getFirebase();
+  await firebaseSignOut(auth);
+}
+
+/* --- Account requests ---------------------------------------------------- */
+
+export async function submitAccountRequest(
+  input: AccountRequestInput,
+  password: string,
+): Promise<AccountRequest> {
+  const { auth, db } = getFirebase();
+  const email = input.email.trim().toLowerCase();
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const uid = credential.user.uid;
+  const request: AccountRequest = {
+    id: uid,
+    authUid: uid,
+    fullName: input.fullName.trim(),
+    email,
+    phone: input.phone.trim(),
+    location: input.location || null,
+    about: input.about?.trim() || null,
+    expertiseIds: [...input.expertiseIds],
+    availabilityHoursPerWeek: input.availabilityHoursPerWeek,
+    consentToContact: input.consentToContact,
+    status: "PENDING",
+    requestedAt: nowIso(),
+  };
+
+  try {
+    await setDoc(doc(db, "accountRequests", uid), request);
+    return request;
+  } catch (error) {
+    await deleteUser(credential.user).catch(() => undefined);
+    throw error;
+  }
+}
+
+export function listAccountRequests(status?: AccountRequestStatus) {
+  const requests = read().accountRequests;
+  return status ? requests.filter((request) => request.status === status) : requests;
+}
+
+export function countPendingRequests() {
+  return read().accountRequests.filter((request) => request.status === "PENDING").length;
+}
+
+export async function approveAccountRequest(
+  requestId: string,
+  adminId: string,
+): Promise<Participant> {
+  const request = read().accountRequests.find((item) => item.id === requestId);
+  if (!request) throw new Error("Request not found.");
+  if (request.status !== "PENDING") throw new Error("Already decided.");
+
+  const person: Participant = {
+    id: request.authUid,
+    authUid: request.authUid,
+    fullName: request.fullName,
+    email: request.email,
+    phone: request.phone,
+    location: request.location,
+    avatarUrl: null,
+    about: request.about,
+    role: "VOLUNTEER",
+    status: "ACTIVE",
+    availabilityHoursPerWeek: request.availabilityHoursPerWeek,
+    consentToContact: request.consentToContact,
+    joinedOn: todayIso(),
+    expertise: expertiseByIds(request.expertiseIds),
+  };
+
+  const { db } = getFirebase();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "participants", person.id), person);
+  batch.update(doc(db, "accountRequests", requestId), {
+    status: "APPROVED",
+    decidedAt: nowIso(),
+    decidedById: adminId,
+  });
+  await batch.commit();
+  return person;
+}
+
+export async function rejectAccountRequest(
+  requestId: string,
+  adminId: string,
+  note?: string,
+) {
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "accountRequests", requestId), {
+    status: "REJECTED",
+    decidedAt: nowIso(),
+    decidedById: adminId,
+    decisionNote: note || null,
+  });
+}
+
+/* --- Participants -------------------------------------------------------- */
+
+export function emailTaken(email: string) {
+  const normalized = email.trim().toLowerCase();
+  const db = read();
+  return (
+    db.participants.some((person) => person.email.toLowerCase() === normalized) ||
+    db.accountRequests.some(
+      (request) =>
+        request.email.toLowerCase() === normalized && request.status === "PENDING",
+    )
+  );
+}
+
+export async function createParticipant(input: NewParticipantInput) {
+  if (emailTaken(input.email)) throw new Error("EMAIL_TAKEN");
+  const id = newId("p");
+  const person: Participant = {
+    id,
+    authUid: null,
+    fullName: input.fullName.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone.trim(),
+    location: input.location || null,
+    avatarUrl: null,
+    about: input.about?.trim() || null,
+    role: "VOLUNTEER",
+    status: "ACTIVE",
+    availabilityHoursPerWeek: input.availabilityHoursPerWeek,
+    consentToContact: input.consentToContact,
+    joinedOn: todayIso(),
+    expertise: expertiseByIds(input.expertiseIds),
+  };
+  const { db } = getFirebase();
+  await setDoc(doc(db, "participants", id), person);
+  return person;
 }
 
 const AVAILABILITY_RANGES: Record<
@@ -54,12 +256,6 @@ const AVAILABILITY_RANGES: Record<
   "20+": [20, Infinity],
 };
 
-/**
- * Backs both the People Directory and the Search & Filter screen.
- *
- * In Postgres this is one query with a WHERE across a join (see
- * SearchParticipants in queries.gql). Here it is the equivalent in memory.
- */
 export function listParticipants(filters: Partial<ParticipantFilters> = {}) {
   const {
     search = "",
@@ -68,116 +264,304 @@ export function listParticipants(filters: Partial<ParticipantFilters> = {}) {
     location = "ALL",
     status = "ALL",
   } = filters;
+  const query = search.trim().toLowerCase();
+  const [minHours, maxHours] = AVAILABILITY_RANGES[availability];
 
-  const q = search.trim().toLowerCase();
-  const [minH, maxH] = AVAILABILITY_RANGES[availability];
-
-  const rows = people.filter((p) => {
-    if (status !== "ALL" && p.status !== status) return false;
-    if (location !== "ALL" && p.location !== location) return false;
-    if (expertiseId !== "ALL" && !p.expertise.some((e) => e.id === expertiseId))
-      return false;
-
-    const h = p.availabilityHoursPerWeek;
-    if (h < minH || h > maxH) return false;
-
-    if (q) {
-      const haystack = [
-        p.fullName,
-        p.email,
-        p.location ?? "",
-        ...p.expertise.map((e) => e.name),
+  return read()
+    .participants.filter((person) => {
+      if (status !== "ALL" && person.status !== status) return false;
+      if (location !== "ALL" && person.location !== location) return false;
+      if (
+        expertiseId !== "ALL" &&
+        !person.expertise.some((area) => area.id === expertiseId)
+      ) {
+        return false;
+      }
+      if (
+        person.availabilityHoursPerWeek < minHours ||
+        person.availabilityHoursPerWeek > maxHours
+      ) {
+        return false;
+      }
+      if (!query) return true;
+      return [
+        person.fullName,
+        person.email,
+        person.location ?? "",
+        ...person.expertise.map((area) => area.name),
       ]
         .join(" ")
-        .toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
-  });
-
-  return delay(rows.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+        .toLowerCase()
+        .includes(query);
+    })
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
 
 export function listRecentParticipants(limit = 5) {
-  const rows = [...people]
+  return [...read().participants]
     .sort((a, b) => b.joinedOn.localeCompare(a.joinedOn))
     .slice(0, limit);
-  return delay(rows);
 }
 
 export function getParticipant(id: string) {
-  return delay(people.find((p) => p.id === id) ?? null);
+  return read().participants.find((person) => person.id === id) ?? null;
 }
 
-/** All four dashboard figures are derived, never hardcoded. */
-export function getStats(): Promise<DashboardStats> {
-  const active = people.filter((p) => p.status === "ACTIVE");
-  const activeExpertise = new Set(
-    active.flatMap((p) => p.expertise.map((e) => e.id)),
-  );
-  const hours = seed.hoursLogs.reduce((sum, h) => sum + h.hours, 0);
-
-  return delay({
-    totalParticipants: people.length,
-    activeThisMonth: active.length,
-    totalHoursCommitted: Math.round(hours),
-    activeExpertiseAreas: activeExpertise.size,
-    // Month-over-month movement. Static until there is history to compare.
-    deltas: {
-      totalParticipants: 12,
-      activeThisMonth: 8,
-      totalHoursCommitted: 15,
-      activeExpertiseAreas: 2,
-    },
-  });
+export async function updateParticipant(id: string, patch: Partial<Participant>) {
+  const current = getParticipant(id);
+  if (!current) throw new Error("Participant not found.");
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "participants", id), patch);
+  return { ...current, ...patch };
 }
 
-export function listProjects(): Promise<Project[]> {
-  return delay(seed.projects);
-}
+export const setParticipantRole = (id: string, role: MemberRole) =>
+  updateParticipant(id, { role });
 
-export function listResources(): Promise<Resource[]> {
-  return delay(seed.resources);
-}
+export const setParticipantStatus = (id: string, status: ParticipantStatus) =>
+  updateParticipant(id, { status });
 
-export function participantsById(ids: string[]): Participant[] {
-  return ids
-    .map((id) => people.find((p) => p.id === id))
-    .filter((p): p is Participant => Boolean(p));
-}
+/* --- Slots --------------------------------------------------------------- */
 
-/* --- Writes -------------------------------------------------------------- */
-
-export function createParticipant(input: NewParticipantInput) {
-  const record: Participant = {
-    id: `p-new-${Date.now()}`,
-    authUid: null,
-    fullName: input.fullName,
-    email: input.email,
-    phone: input.phone,
-    location: input.location ?? null,
-    avatarUrl: null,
-    about: input.about ?? null,
-    role: "PARTICIPANT",
-    status: "PENDING",
-    availabilityHoursPerWeek: input.availabilityHoursPerWeek,
-    consentToContact: input.consentToContact,
-    joinedOn: new Date().toISOString().slice(0, 10),
-    expertise: seed.expertiseAreas.filter((e) =>
-      input.expertiseIds.includes(e.id),
-    ),
+export async function createSlot(input: SlotInput, createdById: string) {
+  const id = newId("slot");
+  const slot: Slot = {
+    id,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    location: input.location || null,
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    capacity: input.capacity,
+    status: "OPEN",
+    projectId: input.projectId ?? null,
+    requiredExpertiseIds: [...input.requiredExpertiseIds],
+    createdById,
+    createdAt: nowIso(),
   };
-  people = [record, ...people];
-  return delay(record);
+  const { db } = getFirebase();
+  await setDoc(doc(db, "slots", id), slot);
+  return slot;
 }
 
-export function updateParticipant(id: string, patch: Partial<Participant>) {
-  people = people.map((p) => (p.id === id ? { ...p, ...patch } : p));
-  return delay(people.find((p) => p.id === id)!);
+export async function updateSlot(id: string, patch: Partial<Slot>) {
+  const current = read().slots.find((slot) => slot.id === id);
+  if (!current) throw new Error("Slot not found.");
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "slots", id), patch);
+  return { ...current, ...patch };
 }
 
-/** True if this email is already in the directory — the wizard checks it. */
-export function emailTaken(email: string, exceptId?: string) {
-  const e = email.trim().toLowerCase();
-  return people.some((p) => p.email.toLowerCase() === e && p.id !== exceptId);
+export function getSlot(id: string) {
+  return read().slots.find((slot) => slot.id === id) ?? null;
+}
+
+function decorate(slot: Slot, viewerId?: string): SlotWithCounts {
+  const signups = read().signups.filter((signup) => signup.slotId === slot.id);
+  return {
+    ...slot,
+    approvedCount: signups.filter(
+      (signup) => signup.status === "APPROVED" || signup.status === "ATTENDED",
+    ).length,
+    requestedCount: signups.filter((signup) => signup.status === "REQUESTED").length,
+    mySignup: viewerId
+      ? signups.find(
+          (signup) =>
+            signup.participantId === viewerId &&
+            signup.status !== "WITHDRAWN" &&
+            signup.status !== "DECLINED",
+        ) ?? null
+      : null,
+  };
+}
+
+export function listSlots(viewerId?: string): SlotWithCounts[] {
+  return [...read().slots]
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .map((slot) => decorate(slot, viewerId));
+}
+
+export function listOpenSlots(viewerId?: string) {
+  const now = nowIso();
+  return listSlots(viewerId).filter(
+    (slot) => slot.status === "OPEN" && slot.endsAt >= now,
+  );
+}
+
+/* --- Slot signups -------------------------------------------------------- */
+
+export async function requestSlot(
+  slotId: string,
+  participantId: string,
+  note?: string,
+) {
+  const slot = getSlot(slotId);
+  if (!slot) throw new Error("Slot not found.");
+  if (slot.status !== "OPEN" || slot.endsAt < nowIso()) throw new Error("SLOT_CLOSED");
+  const existing = read().signups.find(
+    (signup) =>
+      signup.slotId === slotId &&
+      signup.participantId === participantId &&
+      signup.status !== "WITHDRAWN" &&
+      signup.status !== "DECLINED",
+  );
+  if (existing) throw new Error("ALREADY_REQUESTED");
+
+  const id = newId("su");
+  const signup: SlotSignup = {
+    id,
+    slotId,
+    participantId,
+    status: "REQUESTED",
+    note: note?.trim() || null,
+    requestedAt: nowIso(),
+  };
+  const { db } = getFirebase();
+  await setDoc(doc(db, "signups", id), signup);
+  return signup;
+}
+
+async function setSignupStatus(
+  id: string,
+  status: SignupStatus,
+  decidedById?: string,
+  hoursLogged?: number,
+) {
+  const patch: Record<string, unknown> = { status, decidedAt: nowIso() };
+  if (decidedById) patch.decidedById = decidedById;
+  if (hoursLogged !== undefined) patch.hoursLogged = hoursLogged;
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "signups", id), patch);
+}
+
+export async function approveSignup(id: string, adminId: string) {
+  const signup = read().signups.find((item) => item.id === id);
+  if (!signup) throw new Error("Signup not found.");
+  if (signup.status !== "REQUESTED") throw new Error("Signup already decided.");
+  const slot = getSlot(signup.slotId);
+  if (slot && decorate(slot).approvedCount >= slot.capacity) {
+    throw new Error("SLOT_FULL");
+  }
+  await setSignupStatus(id, "APPROVED", adminId);
+}
+
+export const declineSignup = (id: string, adminId: string) =>
+  setSignupStatus(id, "DECLINED", adminId);
+
+export async function withdrawSignup(id: string) {
+  const signup = read().signups.find((item) => item.id === id);
+  if (!signup) throw new Error("Signup not found.");
+  if (signup.status !== "REQUESTED" && signup.status !== "APPROVED") {
+    throw new Error("This signup can no longer be withdrawn.");
+  }
+  await setSignupStatus(id, "WITHDRAWN");
+}
+
+export const markAttended = (id: string, adminId: string, hours: number) =>
+  setSignupStatus(id, "ATTENDED", adminId, hours);
+
+export const markNoShow = (id: string, adminId: string) =>
+  setSignupStatus(id, "NO_SHOW", adminId);
+
+export function listSignupsForSlot(slotId: string) {
+  const db = read();
+  return db.signups
+    .filter((signup) => signup.slotId === slotId)
+    .map((signup) => ({
+      ...signup,
+      participant: db.participants.find(
+        (participant) => participant.id === signup.participantId,
+      ),
+    }));
+}
+
+export function listPendingSignups() {
+  const db = read();
+  return db.signups
+    .filter((signup) => signup.status === "REQUESTED")
+    .map((signup) => ({
+      ...signup,
+      participant: db.participants.find(
+        (participant) => participant.id === signup.participantId,
+      ),
+      slot: db.slots.find((slot) => slot.id === signup.slotId),
+    }))
+    .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
+}
+
+export function listMySignups(participantId: string) {
+  const db = read();
+  return db.signups
+    .filter((signup) => signup.participantId === participantId)
+    .map((signup) => {
+      const slot = db.slots.find((item) => item.id === signup.slotId);
+      return { ...signup, slot: slot ? decorate(slot, participantId) : undefined };
+    })
+    .sort((a, b) =>
+      (a.slot?.startsAt ?? "").localeCompare(b.slot?.startsAt ?? ""),
+    );
+}
+
+/* --- Projects ------------------------------------------------------------ */
+
+export function listProjects(): Project[] {
+  return read().projects;
+}
+
+export async function createProject(
+  input: Omit<Project, "id" | "memberIds"> & { memberIds?: string[] },
+) {
+  const id = newId("prj");
+  const project: Project = { ...input, id, memberIds: input.memberIds ?? [] };
+  const { db } = getFirebase();
+  await setDoc(doc(db, "projects", id), project);
+  return project;
+}
+
+export function participantsById(ids: string[]) {
+  const db = read();
+  return ids
+    .map((id) => db.participants.find((participant) => participant.id === id))
+    .filter((participant): participant is Participant => Boolean(participant));
+}
+
+/* --- Stats --------------------------------------------------------------- */
+
+export function getAdminStats(): DashboardStats {
+  const db = read();
+  const active = db.participants.filter((person) => person.status === "ACTIVE");
+  const now = nowIso();
+  return {
+    totalParticipants: db.participants.length,
+    activeParticipants: active.length,
+    pendingRequests: db.accountRequests.filter((request) => request.status === "PENDING")
+      .length,
+    openSlots: db.slots.filter((slot) => slot.status === "OPEN" && slot.endsAt >= now)
+      .length,
+    totalHoursCommitted: Math.round(
+      db.signups.reduce((sum, signup) => sum + (signup.hoursLogged ?? 0), 0),
+    ),
+    activeExpertiseAreas: new Set(
+      active.flatMap((person) => person.expertise.map((area) => area.id)),
+    ).size,
+  };
+}
+
+export function getVolunteerStats(participantId: string): VolunteerStats {
+  const db = read();
+  const now = nowIso();
+  const mine = db.signups.filter((signup) => signup.participantId === participantId);
+  return {
+    upcomingCommitments: mine.filter((signup) => {
+      const slot = db.slots.find((item) => item.id === signup.slotId);
+      return signup.status === "APPROVED" && slot && slot.endsAt >= now;
+    }).length,
+    pendingRequests: mine.filter((signup) => signup.status === "REQUESTED").length,
+    hoursLogged: Math.round(
+      mine.reduce((sum, signup) => sum + (signup.hoursLogged ?? 0), 0),
+    ),
+    openOpportunities: db.slots.filter(
+      (slot) => slot.status === "OPEN" && slot.endsAt >= now,
+    ).length,
+  };
 }

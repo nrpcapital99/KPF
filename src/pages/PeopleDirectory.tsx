@@ -2,15 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { TopBar } from "../components/Layout";
 import PeopleTable from "../components/PeopleTable";
-import { EmptyState, Field, Select, SkeletonRows } from "../components/ui";
+import { EmptyState, Field, Select } from "../components/ui";
 import { FilterIcon, PlusIcon } from "../components/icons";
 import { listExpertiseAreas, listLocations, listParticipants } from "../data/api";
-import {
-  EMPTY_FILTERS,
-  type ExpertiseArea,
-  type Participant,
-  type ParticipantFilters,
-} from "../types";
+import { EMPTY_FILTERS, type ParticipantFilters } from "../types";
+import { isStaff, useCurrentUser, useStore } from "../auth/session";
 
 const AVAILABILITY_OPTIONS: {
   value: ParticipantFilters["availability"];
@@ -24,6 +20,9 @@ const AVAILABILITY_OPTIONS: {
 ];
 
 export default function PeopleDirectory() {
+  useStore();
+  const me = useCurrentUser();
+  const staff = isStaff(me);
   const [params, setParams] = useSearchParams();
   const initialQuery = params.get("q") ?? "";
 
@@ -38,14 +37,8 @@ export default function PeopleDirectory() {
     search: initialQuery,
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [people, setPeople] = useState<Participant[] | null>(null);
-  const [areas, setAreas] = useState<ExpertiseArea[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-
-  useEffect(() => {
-    listExpertiseAreas().then(setAreas);
-    listLocations().then(setLocations);
-  }, []);
+  const areas = listExpertiseAreas();
+  const locations = listLocations();
 
   // Debounce the free-text search; dropdowns apply on button press.
   useEffect(() => {
@@ -56,16 +49,7 @@ export default function PeopleDirectory() {
     return () => clearTimeout(t);
   }, [filters.search]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setPeople(null);
-    listParticipants(applied).then((rows) => {
-      if (!cancelled) setPeople(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [applied]);
+  const people = listParticipants(applied);
 
   function set<K extends keyof ParticipantFilters>(
     key: K,
@@ -102,14 +86,14 @@ export default function PeopleDirectory() {
         <section className="card panel">
           <div className="panel__head">
             <h2 className="panel__title">
-              {people === null
-                ? "Loading..."
-                : `${people.length} ${people.length === 1 ? "person" : "people"}`}
+              {`${people.length} ${people.length === 1 ? "person" : "people"}`}
             </h2>
             <div className="panel__actions">
-              <Link to="/people/new" className="btn btn--primary">
-                <PlusIcon /> Add Participant
-              </Link>
+              {staff && (
+                <Link to="/people/new" className="btn btn--primary">
+                  <PlusIcon /> Add Participant
+                </Link>
+              )}
               <button
                 className="btn btn--ghost"
                 onClick={() => setShowFilters((s) => !s)}
@@ -183,7 +167,6 @@ export default function PeopleDirectory() {
                   >
                     <option value="ALL">All</option>
                     <option value="ACTIVE">Active</option>
-                    <option value="PENDING">Pending</option>
                     <option value="INACTIVE">Inactive</option>
                     <option value="ARCHIVED">Archived</option>
                   </Select>
@@ -201,9 +184,7 @@ export default function PeopleDirectory() {
             </>
           )}
 
-          {people === null ? (
-            <SkeletonRows rows={8} />
-          ) : people.length === 0 ? (
+          {people.length === 0 ? (
             <EmptyState
               title="No one matches those filters"
               message="Try widening the search, or clear the filters to see everyone."

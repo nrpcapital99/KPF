@@ -1,46 +1,107 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import type { ReactNode } from "react";
-import { getCurrentUser } from "../data/api";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+import { countPendingRequests, listPendingSignups, signOut } from "../data/api";
+import { useCurrentUser, useStore, isStaff } from "../auth/session";
 import { Avatar } from "./ui";
 import {
-  BellIcon,
-  ChevronDown,
+  CalendarIcon,
+  HandIcon,
   HomeIcon,
+  InboxIcon,
   Logo,
+  LogOutIcon,
   MenuIcon,
   ProjectsIcon,
-  ResourcesIcon,
   SearchIcon,
   SettingsIcon,
   UserIcon,
   UsersIcon,
 } from "./icons";
 
-const NAV = [
-  { to: "/", label: "Home", Icon: HomeIcon, end: true },
-  { to: "/people", label: "People Directory", Icon: UsersIcon },
-  { to: "/profile", label: "My Profile", Icon: UserIcon },
-  { to: "/projects", label: "Projects / Teams", Icon: ProjectsIcon },
-  { to: "/resources", label: "Resources", Icon: ResourcesIcon },
-  { to: "/settings", label: "Settings", Icon: SettingsIcon },
-];
-
-/** Bottom tab bar on phones — the four primary destinations plus More. */
-const MOBILE_NAV = [
-  { to: "/", label: "Home", Icon: HomeIcon, end: true },
-  { to: "/people", label: "People", Icon: UsersIcon },
-  { to: "/projects", label: "Projects", Icon: ProjectsIcon },
-  { to: "/settings", label: "More", Icon: MenuIcon },
-];
+interface NavEntry {
+  to: string;
+  label: string;
+  short?: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+  end?: boolean;
+  badge?: number;
+}
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
   COORDINATOR: "Coordinator",
-  PARTICIPANT: "Participant",
+  VOLUNTEER: "Volunteer",
 };
 
+/**
+ * Navigation is role-driven: staff review requests and open slots, volunteers
+ * find work and track what they've signed up for. Nobody sees a link to a page
+ * their role can't use.
+ */
+function useNav(): { primary: NavEntry[]; mobile: NavEntry[] } {
+  const me = useCurrentUser();
+
+  if (isStaff(me)) {
+    const pendingAccounts = countPendingRequests();
+    const pendingSignups = listPendingSignups().length;
+
+    const primary: NavEntry[] = [
+      { to: "/", label: "Home", Icon: HomeIcon, end: true },
+      {
+        to: "/approvals",
+        label: "Account Requests",
+        short: "Requests",
+        Icon: InboxIcon,
+        badge: pendingAccounts,
+      },
+      {
+        to: "/slots",
+        label: "Volunteering Slots",
+        short: "Slots",
+        Icon: CalendarIcon,
+        badge: pendingSignups,
+      },
+      { to: "/people", label: "People Directory", short: "People", Icon: UsersIcon },
+      { to: "/projects", label: "Projects / Teams", short: "Projects", Icon: ProjectsIcon },
+      { to: "/profile", label: "My Profile", Icon: UserIcon },
+      { to: "/settings", label: "Settings", Icon: SettingsIcon },
+    ];
+
+    return {
+      primary,
+      mobile: [
+        primary[0],
+        primary[1],
+        primary[2],
+        { to: "/settings", label: "More", Icon: MenuIcon },
+      ],
+    };
+  }
+
+  const primary: NavEntry[] = [
+    { to: "/", label: "Home", Icon: HomeIcon, end: true },
+    { to: "/opportunities", label: "Opportunities", Icon: HandIcon },
+    { to: "/commitments", label: "My Commitments", short: "Mine", Icon: CalendarIcon },
+    { to: "/people", label: "People Directory", short: "People", Icon: UsersIcon },
+    { to: "/profile", label: "My Profile", Icon: UserIcon },
+    { to: "/settings", label: "Settings", Icon: SettingsIcon },
+  ];
+
+  return {
+    primary,
+    mobile: [
+      primary[0],
+      primary[1],
+      primary[2],
+      { to: "/settings", label: "More", Icon: MenuIcon },
+    ],
+  };
+}
+
 export default function Layout() {
-  const me = getCurrentUser();
+  useStore();
+  const me = useCurrentUser();
+  const { primary, mobile } = useNav();
 
   return (
     <div className="app">
@@ -48,9 +109,7 @@ export default function Layout() {
         <div className="sidebar__brand">
           <Logo className="sidebar__mark" />
           <div>
-            <div className="sidebar__wordmark">
-              KANAK PARAKH
-            </div>
+            <div className="sidebar__wordmark">KANAK PARAKH</div>
             <div className="sidebar__sub" style={{ textAlign: "center" }}>
               FOUNDATION
             </div>
@@ -58,7 +117,7 @@ export default function Layout() {
         </div>
 
         <nav className="sidebar__nav" aria-label="Main">
-          {NAV.map(({ to, label, Icon, end }) => (
+          {primary.map(({ to, label, Icon, end, badge }) => (
             <NavLink
               key={to}
               to={to}
@@ -69,6 +128,7 @@ export default function Layout() {
             >
               <Icon />
               <span>{label}</span>
+              {badge ? <span className="navitem__badge">{badge}</span> : null}
             </NavLink>
           ))}
         </nav>
@@ -81,7 +141,6 @@ export default function Layout() {
               {ROLE_LABEL[me.role] ?? me.role}
             </span>
           </span>
-          <ChevronDown className="sidebar__user-caret" />
         </NavLink>
       </aside>
 
@@ -91,7 +150,7 @@ export default function Layout() {
       </div>
 
       <nav className="mobilenav" aria-label="Primary">
-        {MOBILE_NAV.map(({ to, label, Icon, end }) => (
+        {mobile.map(({ to, label, short, Icon, end, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -100,8 +159,31 @@ export default function Layout() {
               `mobilenav__item${isActive ? " mobilenav__item--active" : ""}`
             }
           >
-            <Icon />
-            <span>{label}</span>
+            <span style={{ position: "relative" }}>
+              <Icon />
+              {badge ? (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -3,
+                    right: -7,
+                    minWidth: 15,
+                    height: 15,
+                    padding: "0 4px",
+                    borderRadius: 999,
+                    background: "var(--red)",
+                    color: "#fff",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  {badge}
+                </span>
+              ) : null}
+            </span>
+            <span>{short ?? label}</span>
           </NavLink>
         ))}
       </nav>
@@ -110,7 +192,8 @@ export default function Layout() {
 }
 
 function MobileTopBar() {
-  const me = getCurrentUser();
+  const me = useCurrentUser();
+  const navigate = useNavigate();
   return (
     <header className="mobile-topbar">
       <div className="mobile-topbar__brand">
@@ -118,9 +201,16 @@ function MobileTopBar() {
         <span className="mobile-topbar__wordmark">KANAK PARAKH</span>
       </div>
       <div className="mobile-topbar__actions">
-        <button className="bell" aria-label="Notifications">
-          <BellIcon />
-          <span className="bell__dot" />
+        <button
+          className="bell"
+          aria-label="Sign out"
+          title="Sign out"
+          onClick={async () => {
+            await signOut();
+            navigate("/login");
+          }}
+        >
+          <LogOutIcon />
         </button>
         <NavLink to="/profile" aria-label="My profile">
           <Avatar person={me} size="sm" />
@@ -130,10 +220,6 @@ function MobileTopBar() {
   );
 }
 
-/**
- * Page header. On desktop it carries search, notifications and the avatar;
- * on phones those move to MobileTopBar and only the greeting remains.
- */
 export function TopBar({
   title,
   subtitle,
@@ -147,7 +233,7 @@ export function TopBar({
   onSearch?: (value: string) => void;
   children?: ReactNode;
 }) {
-  const me = getCurrentUser();
+  const me = useCurrentUser();
   const navigate = useNavigate();
 
   return (
@@ -171,9 +257,16 @@ export function TopBar({
           </div>
         )}
         {children}
-        <button className="bell" aria-label="Notifications">
-          <BellIcon />
-          <span className="bell__dot" />
+        <button
+          className="bell"
+          aria-label="Sign out"
+          title="Sign out"
+          onClick={async () => {
+            await signOut();
+            navigate("/login");
+          }}
+        >
+          <LogOutIcon />
         </button>
         <button onClick={() => navigate("/profile")} aria-label="My profile">
           <Avatar person={me} size="md" />

@@ -1,0 +1,147 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function participantPath() {
+      return /databases/$(database)/documents/participants/$(request.auth.uid);
+    }
+
+    function isMember() {
+      return signedIn()
+        && exists(participantPath())
+        && get(participantPath()).data.status == "ACTIVE";
+    }
+
+    function isStaff() {
+      return isMember()
+        && get(participantPath()).data.role in ["ADMIN", "COORDINATOR"];
+    }
+
+    function isAdmin() {
+      return isMember() && get(participantPath()).data.role == "ADMIN";
+    }
+
+    match /config/foundation {
+      allow get: if true;
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/config/foundation)
+        && request.resource.data.bootstrapUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /participants/{participantId} {
+      allow get: if isMember() || (signedIn() && request.auth.uid == participantId);
+      allow list: if isMember();
+
+      allow create: if isAdmin()
+        || (
+          isStaff()
+          && request.resource.data.role == "VOLUNTEER"
+          && request.resource.data.status == "ACTIVE"
+          && (
+            request.resource.data.authUid == null
+            || (
+              participantId == request.resource.data.authUid
+              && exists(/databases/$(database)/documents/accountRequests/$(participantId))
+              && get(/databases/$(database)/documents/accountRequests/$(participantId)).data.status
+                == "PENDING"
+            )
+          )
+        )
+        || (
+          signedIn()
+          && participantId == request.auth.uid
+          && request.resource.data.authUid == request.auth.uid
+          && request.resource.data.role == "ADMIN"
+          && request.resource.data.status == "ACTIVE"
+          && getAfter(/databases/$(database)/documents/config/foundation).data.bootstrapUid
+            == request.auth.uid
+        );
+
+      allow update: if isAdmin()
+        || (
+          isStaff()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            "authUid",
+            "email",
+            "role",
+            "status"
+          ])
+        )
+        || (
+          signedIn()
+          && request.auth.uid == participantId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "fullName",
+            "phone",
+            "location",
+            "about",
+            "availabilityHoursPerWeek",
+            "expertise",
+            "avatarUrl",
+            "consentToContact"
+          ])
+        );
+      allow delete: if false;
+    }
+
+    match /accountRequests/{requestId} {
+      allow create: if signedIn()
+        && requestId == request.auth.uid
+        && exists(/databases/$(database)/documents/config/foundation)
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == "PENDING";
+      allow get: if (signedIn() && requestId == request.auth.uid) || isStaff();
+      allow list: if isStaff();
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "decidedAt",
+          "decidedById",
+          "decisionNote"
+        ]);
+      allow delete: if false;
+    }
+
+    match /slots/{slotId} {
+      allow read: if isMember();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /signups/{signupId} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.participantId == request.auth.uid
+        && request.resource.data.status == "REQUESTED";
+      allow update: if (
+          isStaff()
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.slotId == resource.data.slotId
+        )
+        || (
+          isMember()
+          && resource.data.participantId == request.auth.uid
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.slotId == resource.data.slotId
+          && request.resource.data.status == "WITHDRAWN"
+        );
+      allow delete: if false;
+    }
+
+    match /projects/{projectId} {
+      allow read: if isMember();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,6 +1,0 @@
-connectorId: "kpf"
-generate:
-  javascriptSdk:
-    outputDir: "../../src/dataconnect-generated"
-    package: "@firebasegen/kpf-connector"
-    react: true

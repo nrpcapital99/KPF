@@ -1,9 +1,15 @@
 {
-  "dataconnect": {
-    "source": "dataconnect"
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }]
   },
   "emulators": {
-    "dataconnect": { "port": 9399 },
+    "firestore": { "port": 8080 },
     "auth": { "port": 9099 },
     "ui": { "enabled": true }
   }

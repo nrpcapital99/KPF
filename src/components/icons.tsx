@@ -203,3 +203,61 @@ export const CheckIcon = (p: P) => (
     <path d="m5 12.5 4.5 4.5L19 7" />
   </svg>
 );
+
+export const InfoIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5" />
+    <path d="M12 7.8h.01" />
+  </svg>
+);
+
+export const AlertIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M10.3 3.9 2.5 17.4A1.8 1.8 0 0 0 4 20h16a1.8 1.8 0 0 0 1.6-2.6L13.7 3.9a1.8 1.8 0 0 0-3.1 0z" />
+    <path d="M12 9.5v4" />
+    <path d="M12 17.2h.01" />
+  </svg>
+);
+
+export const CalendarPlus = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M8 3v4" />
+    <path d="M16 3v4" />
+    <path d="M12 13v5" />
+    <path d="M9.5 15.5h5" />
+  </svg>
+);
+
+export const InboxIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 13h4l1.5 3h7L17 13h4" />
+    <path d="M5.3 5.5 3 13v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5l-2.3-7.5A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.9 1.5z" />
+  </svg>
+);
+
+export const HandIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M9 11V4.8a1.4 1.4 0 0 1 2.8 0V11" />
+    <path d="M11.8 10.6V3.6a1.4 1.4 0 0 1 2.8 0V11" />
+    <path d="M14.6 11V5.8a1.4 1.4 0 0 1 2.8 0V14" />
+    <path d="M9 11.5V9a1.4 1.4 0 0 0-2.8 0v5.5a7 7 0 0 0 7 7h1a7 7 0 0 0 7-7V11" />
+  </svg>
+);
+
+export const LogOutIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3" />
+    <path d="m15.5 16 4-4-4-4" />
+    <path d="M19.5 12H9.5" />
+  </svg>
+);
+
+export const XIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);

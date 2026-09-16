@@ -1,5 +1,11 @@
 import type { ReactNode, SelectHTMLAttributes } from "react";
-import type { ExpertiseArea, Participant, ParticipantStatus } from "../types";
+import type {
+  ExpertiseArea,
+  Participant,
+  ParticipantStatus,
+  SignupStatus,
+  SlotStatus,
+} from "../types";
 import { ChevronDown } from "./icons";
 
 /* --- Avatar -------------------------------------------------------------- */
@@ -36,7 +42,6 @@ export function Avatar({
 const STATUS_LABEL: Record<ParticipantStatus, string> = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
-  PENDING: "Pending",
   ARCHIVED: "Archived",
 };
 
@@ -45,6 +50,67 @@ export function StatusPill({ status }: { status: ParticipantStatus }) {
     <span className={`pill pill--${status.toLowerCase()}`}>
       {STATUS_LABEL[status]}
     </span>
+  );
+}
+
+/** Generic pill for slot / signup / request states. */
+export type PillTone = "active" | "pending" | "inactive" | "archived";
+
+export function Pill({ tone, children }: { tone: PillTone; children: ReactNode }) {
+  return <span className={`pill pill--${tone}`}>{children}</span>;
+}
+
+const SIGNUP_PILL: Record<SignupStatus, { tone: PillTone; label: string }> = {
+  REQUESTED: { tone: "pending", label: "Requested" },
+  APPROVED: { tone: "active", label: "Confirmed" },
+  DECLINED: { tone: "archived", label: "Declined" },
+  WITHDRAWN: { tone: "inactive", label: "Withdrawn" },
+  ATTENDED: { tone: "active", label: "Attended" },
+  NO_SHOW: { tone: "archived", label: "No show" },
+};
+
+export function SignupPill({ status }: { status: SignupStatus }) {
+  const { tone, label } = SIGNUP_PILL[status];
+  return <Pill tone={tone}>{label}</Pill>;
+}
+
+const SLOT_PILL: Record<SlotStatus, { tone: PillTone; label: string }> = {
+  OPEN: { tone: "active", label: "Open" },
+  CLOSED: { tone: "inactive", label: "Closed" },
+  COMPLETED: { tone: "inactive", label: "Completed" },
+  CANCELLED: { tone: "archived", label: "Cancelled" },
+};
+
+export function SlotPill({ status }: { status: SlotStatus }) {
+  const { tone, label } = SLOT_PILL[status];
+  return <Pill tone={tone}>{label}</Pill>;
+}
+
+/** How full a slot is, as text plus a bar. */
+export function Capacity({
+  filled,
+  capacity,
+}: {
+  filled: number;
+  capacity: number;
+}) {
+  const pct = capacity > 0 ? Math.min(100, (filled / capacity) * 100) : 0;
+  const full = filled >= capacity;
+  return (
+    <div className="capacity">
+      <span>
+        <strong>
+          {filled} / {capacity}
+        </strong>{" "}
+        {capacity === 1 ? "volunteer" : "volunteers"}
+      </span>
+      <div className="capacity__bar">
+        <div
+          className={`capacity__fill${full ? " capacity__fill--full" : ""}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -192,4 +258,65 @@ export function formatDate(iso: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+export function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** "12 Apr 2025, 9:00 AM - 1:00 PM" — collapses the date when it's the same day. */
+export function formatSlotWhen(startsAt: string, endsAt: string) {
+  const a = new Date(startsAt);
+  const b = new Date(endsAt);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    return `${startsAt} - ${endsAt}`;
+  }
+  const date = a.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const t = (d: Date) =>
+    d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+
+  return a.toDateString() === b.toDateString()
+    ? `${date}, ${t(a)} - ${t(b)}`
+    : `${formatDateTime(startsAt)} - ${formatDateTime(endsAt)}`;
+}
+
+/** "in 3 days" / "2 hours ago" — for request queues. */
+export function relativeTime(iso: string) {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const diff = then - Date.now();
+  const abs = Math.abs(diff);
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31536000000],
+    ["month", 2592000000],
+    ["day", 86400000],
+    ["hour", 3600000],
+    ["minute", 60000],
+  ];
+  for (const [unit, ms] of units) {
+    if (abs >= ms) return rtf.format(Math.round(diff / ms), unit);
+  }
+  return "just now";
+}
+
+/** Local datetime string suitable for <input type="datetime-local"> defaults. */
+export function toLocalInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
 }

@@ -1,17 +1,10 @@
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-
-/**
- * Firebase initialisation.
- *
- * Nothing in the app imports this yet — the UI runs entirely on seed data via
- * src/data/api.ts. Fill in .env.local and this becomes live in one step.
- *
- * These VITE_ values are bundled into the client. That is expected and safe
- * for Firebase: the API key identifies the project, it does not authorise
- * anything. Access is controlled by the @auth directives in
- * dataconnect/connector/*.gql, which are enforced server-side.
- */
+import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
+import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
+import {
+  connectFirestoreEmulator,
+  getFirestore,
+  type Firestore,
+} from "firebase/firestore";
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,22 +13,38 @@ const config = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-export const isFirebaseConfigured = Boolean(config.apiKey && config.projectId);
+export const isFirebaseConfigured = Boolean(
+  config.apiKey && config.authDomain && config.projectId && config.appId,
+);
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
+let db: Firestore | undefined;
+let emulatorsConnected = false;
 
 export function getFirebase() {
   if (!isFirebaseConfigured) {
     throw new Error(
-      "Firebase is not configured. Copy .env.example to .env.local and fill in your project values.",
+      "Firebase is not configured. Copy .env.example to .env.local and add the Firebase web app values.",
     );
   }
+
   if (!app) {
-    app = initializeApp(config);
+    app = getApps().length ? getApp() : initializeApp(config);
     auth = getAuth(app);
+    db = getFirestore(app);
   }
-  return { app: app!, auth: auth! };
+
+  if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true" && !emulatorsConnected) {
+    connectAuthEmulator(auth!, "http://127.0.0.1:9099", {
+      disableWarnings: true,
+    });
+    connectFirestoreEmulator(db!, "127.0.0.1", 8080);
+    emulatorsConnected = true;
+  }
+
+  return { app, auth: auth!, db: db! };
 }

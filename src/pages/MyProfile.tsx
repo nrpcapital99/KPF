@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useCurrentUser } from "../auth/session";
 import { TopBar } from "../components/Layout";
 import {
   Avatar,
@@ -18,7 +19,6 @@ import {
   PhoneIcon,
 } from "../components/icons";
 import {
-  getCurrentUser,
   listExpertiseAreas,
   listLocations,
   updateParticipant,
@@ -28,23 +28,18 @@ import type { ExpertiseArea, Participant } from "../types";
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
   COORDINATOR: "Coordinator",
-  PARTICIPANT: "Participant",
+  VOLUNTEER: "Volunteer",
 };
 
 const HOURS_CHOICES = [2, 4, 5, 8, 10, 12, 15, 20, 25];
 
 export default function MyProfile() {
-  const [me, setMe] = useState<Participant>(getCurrentUser());
+  const me = useCurrentUser();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [areas, setAreas] = useState<ExpertiseArea[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
+  const areas = listExpertiseAreas();
+  const locations = listLocations();
   const [draft, setDraft] = useState<Participant>(me);
-
-  useEffect(() => {
-    listExpertiseAreas().then(setAreas);
-    listLocations().then(setLocations);
-  }, []);
 
   function startEdit() {
     setDraft(me);
@@ -63,7 +58,7 @@ export default function MyProfile() {
   async function save() {
     setSaving(true);
     try {
-      const updated = await updateParticipant(me.id, {
+      updateParticipant(me.id, {
         fullName: draft.fullName,
         phone: draft.phone,
         location: draft.location,
@@ -71,7 +66,6 @@ export default function MyProfile() {
         availabilityHoursPerWeek: draft.availabilityHoursPerWeek,
         expertise: draft.expertise,
       });
-      setMe(updated);
       setEditing(false);
     } finally {
       setSaving(false);

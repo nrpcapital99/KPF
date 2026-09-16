@@ -22,6 +22,18 @@ button { cursor: pointer; background: none; border: none; padding: 0; }
 a { color: inherit; text-decoration: none; }
 [hidden] { display: none !important; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.2; }
 
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: var(--r-sm); }
@@ -385,4 +397,93 @@ table.dt { width: 100%; border-collapse: collapse; min-width: 860px; }
   }
   .mobilenav__item svg { width: 21px; height: 21px; }
   .mobilenav__item--active { color: var(--navy); font-weight: 600; }
+}
+
+/* --- Auth shell ----------------------------------------------------------- */
+.auth {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--sp-7) var(--sp-4);
+  gap: var(--sp-6);
+}
+.auth__brand { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
+.auth__brand svg { width: 40px; height: 40px; color: var(--gold); }
+.auth__wordmark {
+  font-family: var(--font-display);
+  font-size: 1.25rem; font-weight: 600; letter-spacing: 0.18em;
+  text-align: center;
+}
+.auth__sub {
+  font-family: var(--font-display);
+  font-size: 0.75rem; letter-spacing: 0.34em; color: var(--gold);
+  text-align: center;
+}
+.auth__card { width: 100%; max-width: 480px; padding: var(--sp-7); }
+.auth__card--wide { max-width: 680px; }
+.auth__title { font-size: var(--text-xl); margin-bottom: var(--sp-2); }
+.auth__lede { color: var(--ink-2); font-size: var(--text-md); margin-bottom: var(--sp-6); }
+.auth__fields { display: flex; flex-direction: column; gap: var(--sp-4); }
+.auth__foot { margin-top: var(--sp-5); text-align: center; color: var(--ink-2); font-size: var(--text-sm); }
+.auth__foot a { color: var(--navy); font-weight: 600; }
+.auth__foot a:hover { text-decoration: underline; }
+
+/* --- Notices -------------------------------------------------------------- */
+.notice {
+  display: flex; gap: var(--sp-3); align-items: flex-start;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--text-sm);
+  border: 1px solid transparent;
+}
+.notice svg { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; }
+.notice--info  { background: var(--tag-blue-bg);  color: var(--tag-blue-fg);  border-color: #D5E3F6; }
+.notice--warn  { background: var(--amber-bg);     color: var(--amber);        border-color: #F0E0BE; }
+.notice--error { background: var(--red-bg);       color: var(--red);          border-color: #F3D3DA; }
+.notice--ok    { background: var(--green-bg);     color: var(--green);        border-color: #C9E6D4; }
+
+/* --- Badge on nav --------------------------------------------------------- */
+.navitem__badge {
+  margin-left: auto;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: var(--r-full);
+  background: var(--gold); color: var(--navy);
+  font-size: 0.6875rem; font-weight: 700;
+  display: grid; place-items: center;
+}
+
+/* --- Slot cards ----------------------------------------------------------- */
+.slot {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  display: flex; gap: var(--sp-5); align-items: flex-start; flex-wrap: wrap;
+}
+.slot__main { flex: 1 1 340px; min-width: 0; }
+.slot__title { font-size: var(--text-lg); }
+.slot__head { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.slot__desc { color: var(--ink-2); font-size: var(--text-md); margin-top: 6px; max-width: 62ch; }
+.slot__meta { display: flex; gap: var(--sp-5); flex-wrap: wrap; margin-top: var(--sp-3); }
+.slot__meta .detail__row { font-size: var(--text-sm); }
+.slot__side { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-end; }
+
+.capacity { font-size: var(--text-sm); color: var(--ink-2); white-space: nowrap; }
+.capacity strong { color: var(--ink); font-weight: 700; }
+.capacity__bar { width: 120px; height: 5px; border-radius: var(--r-full); background: var(--border); margin-top: 6px; overflow: hidden; }
+.capacity__fill { height: 100%; background: var(--green); border-radius: var(--r-full); }
+.capacity__fill--full { background: var(--amber); }
+
+/* --- Request review rows -------------------------------------------------- */
+.review {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  display: flex; gap: var(--sp-4); align-items: flex-start; flex-wrap: wrap;
+}
+.review__main { flex: 1 1 300px; min-width: 0; }
+.review__actions { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .auth__card { padding: var(--sp-5); }
+  .slot, .review { padding: var(--sp-4); }
+  .slot__side { align-items: stretch; width: 100%; }
+  .review__actions { width: 100%; }
+  .review__actions .btn { flex: 1; }
 }

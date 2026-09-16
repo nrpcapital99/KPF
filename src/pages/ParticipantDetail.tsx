@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useCurrentUser, useStore } from "../auth/session";
 import { TopBar } from "../components/Layout";
 import {
   Avatar,
@@ -14,36 +14,15 @@ import {
   ClockIcon,
   MailIcon,
   MapPin,
-  MoreVertical,
   PhoneIcon,
 } from "../components/icons";
-import { getParticipant } from "../data/api";
-import type { Participant } from "../types";
+import { getParticipant, setParticipantStatus } from "../data/api";
 
 export default function ParticipantDetail() {
+  useStore();
+  const me = useCurrentUser();
   const { id } = useParams<{ id: string }>();
-  const [person, setPerson] = useState<Participant | null | undefined>(
-    undefined,
-  );
-
-  useEffect(() => {
-    if (!id) return;
-    setPerson(undefined);
-    getParticipant(id).then(setPerson);
-  }, [id]);
-
-  if (person === undefined) {
-    return (
-      <>
-        <TopBar title="Loading..." />
-        <div className="content">
-          <div className="card" style={{ height: 320 }}>
-            <div className="skeleton" style={{ height: "100%", borderRadius: "var(--r-lg)" }} />
-          </div>
-        </div>
-      </>
-    );
-  }
+  const person = id ? getParticipant(id) : null;
 
   if (person === null) {
     return (
@@ -97,9 +76,19 @@ export default function ParticipantDetail() {
               <a href={`mailto:${person.email}`} className="btn btn--primary">
                 <MailIcon /> Contact
               </a>
-              <button className="btn btn--ghost" aria-label="More actions">
-                <MoreVertical />
-              </button>
+              {me.role === "ADMIN" && me.id !== person.id && (
+                <button
+                  className="btn btn--ghost"
+                  onClick={() =>
+                    void setParticipantStatus(
+                      person.id,
+                      person.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                    )
+                  }
+                >
+                  {person.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                </button>
+              )}
             </div>
           </header>
 
