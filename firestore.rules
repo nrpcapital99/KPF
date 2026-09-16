@@ -116,20 +116,38 @@ service cloud.firestore {
 
     match /signups/{signupId} {
       allow read: if isMember();
+
+      // A volunteer may only put their own hand up, only on a slot that is
+      // genuinely open, and only in the REQUESTED state with no hours already
+      // claimed. Capacity is checked by a coordinator at approval time —
+      // Firestore rules cannot count sibling documents.
       allow create: if isMember()
         && request.resource.data.participantId == request.auth.uid
-        && request.resource.data.status == "REQUESTED";
+        && request.resource.data.status == "REQUESTED"
+        && (
+          !("hoursLogged" in request.resource.data)
+          || request.resource.data.hoursLogged == null
+        )
+        && exists(/databases/$(database)/documents/slots/$(request.resource.data.slotId))
+        && get(/databases/$(database)/documents/slots/$(request.resource.data.slotId)).data.status
+          == "OPEN";
+
       allow update: if (
+          // Staff decide: confirm, decline, or record attendance and hours.
           isStaff()
           && request.resource.data.participantId == resource.data.participantId
           && request.resource.data.slotId == resource.data.slotId
         )
         || (
+          // A volunteer may withdraw their own signup and nothing else — they
+          // cannot confirm themselves or award themselves hours.
           isMember()
           && resource.data.participantId == request.auth.uid
-          && request.resource.data.participantId == resource.data.participantId
-          && request.resource.data.slotId == resource.data.slotId
           && request.resource.data.status == "WITHDRAWN"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "decidedAt"
+          ])
         );
       allow delete: if false;
     }
