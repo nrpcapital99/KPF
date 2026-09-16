@@ -1,23 +1,30 @@
+import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { isStaff, useSession } from "./auth/session";
 import AuthShell, { Notice } from "./components/AuthShell";
+import { SkeletonRows } from "./components/ui";
 import { signOut } from "./data/api";
 import Layout from "./components/Layout";
-import AddParticipant from "./pages/AddParticipant";
-import Dashboard from "./pages/Dashboard";
-import MyProfile from "./pages/MyProfile";
-import ParticipantDetail from "./pages/ParticipantDetail";
-import PeopleDirectory from "./pages/PeopleDirectory";
-import Projects from "./pages/Projects";
-import Settings from "./pages/Settings";
-import Approvals from "./pages/admin/Approvals";
-import ManageSlots from "./pages/admin/ManageSlots";
 import FirstRun from "./pages/auth/FirstRun";
 import Login from "./pages/auth/Login";
 import RequestAccount from "./pages/auth/RequestAccount";
 import PendingAccount from "./pages/auth/PendingAccount";
-import MyCommitments from "./pages/volunteer/MyCommitments";
-import Opportunities from "./pages/volunteer/Opportunities";
+
+/**
+ * Signed-in pages load on demand. A volunteer never downloads the admin
+ * approval queue, and nobody downloads any of it before signing in.
+ */
+const AddParticipant = lazy(() => import("./pages/AddParticipant"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const MyProfile = lazy(() => import("./pages/MyProfile"));
+const ParticipantDetail = lazy(() => import("./pages/ParticipantDetail"));
+const PeopleDirectory = lazy(() => import("./pages/PeopleDirectory"));
+const Projects = lazy(() => import("./pages/Projects"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Approvals = lazy(() => import("./pages/admin/Approvals"));
+const ManageSlots = lazy(() => import("./pages/admin/ManageSlots"));
+const MyCommitments = lazy(() => import("./pages/volunteer/MyCommitments"));
+const Opportunities = lazy(() => import("./pages/volunteer/Opportunities"));
 
 export default function App() {
   const session = useSession();
@@ -119,23 +126,100 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="people" element={<PeopleDirectory />} />
-        <Route path="people/:id" element={<ParticipantDetail />} />
-        <Route path="profile" element={<MyProfile />} />
-        <Route path="settings" element={<Settings />} />
+        <Route
+          index
+          element={
+            <Lazy>
+              <Dashboard />
+            </Lazy>
+          }
+        />
+        <Route
+          path="people"
+          element={
+            <Lazy>
+              <PeopleDirectory />
+            </Lazy>
+          }
+        />
+        <Route
+          path="people/:id"
+          element={
+            <Lazy>
+              <ParticipantDetail />
+            </Lazy>
+          }
+        />
+        <Route
+          path="profile"
+          element={
+            <Lazy>
+              <MyProfile />
+            </Lazy>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <Lazy>
+              <Settings />
+            </Lazy>
+          }
+        />
 
         {staff ? (
           <>
-            <Route path="approvals" element={<Approvals />} />
-            <Route path="slots" element={<ManageSlots />} />
-            <Route path="people/new" element={<AddParticipant />} />
-            <Route path="projects" element={<Projects />} />
+            <Route
+              path="approvals"
+              element={
+                <Lazy>
+                  <Approvals />
+                </Lazy>
+              }
+            />
+            <Route
+              path="slots"
+              element={
+                <Lazy>
+                  <ManageSlots />
+                </Lazy>
+              }
+            />
+            <Route
+              path="people/new"
+              element={
+                <Lazy>
+                  <AddParticipant />
+                </Lazy>
+              }
+            />
+            <Route
+              path="projects"
+              element={
+                <Lazy>
+                  <Projects />
+                </Lazy>
+              }
+            />
           </>
         ) : (
           <>
-            <Route path="opportunities" element={<Opportunities />} />
-            <Route path="commitments" element={<MyCommitments />} />
+            <Route
+              path="opportunities"
+              element={
+                <Lazy>
+                  <Opportunities />
+                </Lazy>
+              }
+            />
+            <Route
+              path="commitments"
+              element={
+                <Lazy>
+                  <MyCommitments />
+                </Lazy>
+              }
+            />
           </>
         )}
 
@@ -144,5 +228,26 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+  );
+}
+
+/**
+ * Suspense boundary for a lazily loaded page. It sits inside <Layout />, so the
+ * sidebar and top bar stay painted while the page chunk arrives — the shell
+ * never flashes.
+ */
+function Lazy({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="content" style={{ paddingTop: "var(--sp-7)" }}>
+          <div className="card" style={{ overflow: "hidden" }}>
+            <SkeletonRows rows={6} />
+          </div>
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
   );
 }
