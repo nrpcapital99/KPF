@@ -1,0 +1,192 @@
+# ============================================================================
+#  Mutations — Kanak Parakh Foundation
+#  Admin-only writes are gated on a Firebase Auth custom claim (role=ADMIN).
+#  See scripts/set-admin-claim.md for how to set that claim.
+# ============================================================================
+
+# --- Add Participant wizard ------------------------------------------------
+
+# Step 1-3 of the wizard submit together. Expertise links are created in a
+# follow-up call so the multi-select can stay dynamic.
+mutation CreateParticipant(
+  $fullName: String!
+  $email: String!
+  $phone: String!
+  $location: String
+  $about: String
+  $availabilityHoursPerWeek: Int!
+  $consentToContact: Boolean!
+) @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  participant_insert(
+    data: {
+      fullName: $fullName
+      email: $email
+      phone: $phone
+      location: $location
+      about: $about
+      availabilityHoursPerWeek: $availabilityHoursPerWeek
+      consentToContact: $consentToContact
+      status: PENDING
+    }
+  )
+}
+
+mutation AddParticipantExpertise($participantId: UUID!, $expertiseId: UUID!)
+  @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  participantExpertise_upsert(
+    data: { participantId: $participantId, expertiseId: $expertiseId }
+  )
+}
+
+mutation RemoveParticipantExpertise($participantId: UUID!, $expertiseId: UUID!)
+  @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  participantExpertise_delete(
+    key: { participantId: $participantId, expertiseId: $expertiseId }
+  )
+}
+
+# --- Editing ---------------------------------------------------------------
+
+mutation UpdateParticipant(
+  $id: UUID!
+  $fullName: String
+  $phone: String
+  $location: String
+  $about: String
+  $availabilityHoursPerWeek: Int
+) @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  participant_update(
+    id: $id
+    data: {
+      fullName: $fullName
+      phone: $phone
+      location: $location
+      about: $about
+      availabilityHoursPerWeek: $availabilityHoursPerWeek
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# A signed-in person editing their OWN profile. The where clause pins the row
+# to auth.uid, so this mutation is structurally incapable of touching anyone
+# else's record regardless of what the client sends.
+mutation UpdateMyProfile(
+  $fullName: String
+  $phone: String
+  $location: String
+  $about: String
+  $availabilityHoursPerWeek: Int
+) @auth(level: USER) {
+  participant_updateMany(
+    where: { authUid: { eq_expr: "auth.uid" } }
+    data: {
+      fullName: $fullName
+      phone: $phone
+      location: $location
+      about: $about
+      availabilityHoursPerWeek: $availabilityHoursPerWeek
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+mutation SetParticipantStatus($id: UUID!, $status: ParticipantStatus!)
+  @auth(expr: "auth.token.role == 'ADMIN'") {
+  participant_update(
+    id: $id
+    data: { status: $status, updatedAt_expr: "request.time" }
+  )
+}
+
+# --- Expertise vocabulary --------------------------------------------------
+
+mutation CreateExpertiseArea($name: String!, $colorToken: String)
+  @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  expertiseArea_insert(data: { name: $name, colorToken: $colorToken })
+}
+
+# --- Projects --------------------------------------------------------------
+
+mutation CreateProject(
+  $name: String!
+  $description: String
+  $startsOn: Date
+  $endsOn: Date
+  $leadId: UUID
+) @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  project_insert(
+    data: {
+      name: $name
+      description: $description
+      startsOn: $startsOn
+      endsOn: $endsOn
+      leadId: $leadId
+    }
+  )
+}
+
+mutation AddProjectMember(
+  $projectId: UUID!
+  $participantId: UUID!
+  $roleOnProject: String
+) @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  projectMember_upsert(
+    data: {
+      projectId: $projectId
+      participantId: $participantId
+      roleOnProject: $roleOnProject
+    }
+  )
+}
+
+# --- Hours -----------------------------------------------------------------
+
+# Anyone signed in can log their own hours; the participant row is resolved
+# from auth.uid rather than accepted from the client.
+mutation LogMyHours($hours: Float!, $workedOn: Date!, $note: String, $projectId: UUID)
+  @auth(level: USER) @transaction {
+  query @redact {
+    me: participants(where: { authUid: { eq_expr: "auth.uid" } }, limit: 1)
+      @check(expr: "this.size() > 0", message: "No participant record for this account") {
+      id
+    }
+  }
+  hoursLog_insert(
+    data: {
+      participantId_expr: "me[0].id"
+      hours: $hours
+      workedOn: $workedOn
+      note: $note
+      projectId: $projectId
+    }
+  )
+}
+
+mutation VerifyHours($id: UUID!) @auth(expr: "auth.token.role == 'ADMIN'") {
+  hoursLog_update(id: $id, data: { verifiedAt_expr: "request.time" })
+}
+
+# --- Resources -------------------------------------------------------------
+
+mutation CreateResource(
+  $title: String!
+  $description: String
+  $url: String!
+  $category: String
+) @auth(expr: "auth.token.role == 'ADMIN' || auth.token.role == 'COORDINATOR'") {
+  resource_insert(
+    data: {
+      title: $title
+      description: $description
+      url: $url
+      category: $category
+    }
+  )
+}
+
+# --- Notifications ---------------------------------------------------------
+
+mutation MarkNotificationRead($id: UUID!) @auth(level: USER) {
+  notification_update(id: $id, data: { readAt_expr: "request.time" })
+}

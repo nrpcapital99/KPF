@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Kanak Parakh Foundation — design tokens
+   Lifted from the approved mockup. Change a value here and it changes
+   everywhere; no component hardcodes a colour.
+   ========================================================================== */
+
+:root {
+  /* --- Brand ------------------------------------------------------------ */
+  --navy:            #0F1E3D;
+  --navy-700:        #16294E;
+  --navy-600:        #1E3560;
+  --navy-hover:      #1B2F58;
+  --gold:            #C4A052;
+  --gold-soft:       #E4D3A8;
+  --gold-wash:       #F6EFDF;
+
+  /* --- Surfaces --------------------------------------------------------- */
+  --cream:           #FAF7F2;
+  --surface:         #FFFFFF;
+  --surface-alt:     #F7F4EE;
+  --sidebar-bg:      var(--navy);
+
+  /* --- Ink -------------------------------------------------------------- */
+  --ink:             #16203A;
+  --ink-2:           #5A6478;
+  --ink-3:           #8A93A6;
+  --ink-inverse:     #FFFFFF;
+  --ink-inverse-2:   #A9B4CC;
+
+  /* --- Lines ------------------------------------------------------------ */
+  --border:          #E9E4DB;
+  --border-strong:   #DAD3C7;
+  --border-inverse:  rgba(255, 255, 255, 0.10);
+
+  /* --- Status ----------------------------------------------------------- */
+  --green:           #2F7D4F;
+  --green-bg:        #E7F4EC;
+  --amber:           #9A7233;
+  --amber-bg:        #FBF2E1;
+  --red:             #A8455A;
+  --red-bg:          #FBE9EC;
+  --slate:           #5A6478;
+  --slate-bg:        #EEF0F4;
+
+  /* --- Tag pills -------------------------------------------------------- */
+  --tag-blue-bg:     #EAF1FB;  --tag-blue-fg:     #3B6FA8;
+  --tag-mint-bg:     #E6F4EE;  --tag-mint-fg:     #2F7D5F;
+  --tag-lavender-bg: #EFEBFA;  --tag-lavender-fg: #5E4FA8;
+  --tag-amber-bg:    #FBF2E3;  --tag-amber-fg:    #9A7233;
+  --tag-pink-bg:     #FBE9EC;  --tag-pink-fg:     #A8455A;
+
+  /* --- Stat card icon tiles --------------------------------------------- */
+  --tile-blue:       #E8F0FB;
+  --tile-amber:      #FDF3E3;
+  --tile-green:      #E9F5EC;
+  --tile-pink:       #FCEAEE;
+
+  /* --- Type ------------------------------------------------------------- */
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-script: "Caveat", "Segoe Script", cursive;
+
+  --text-xs:   0.75rem;
+  --text-sm:   0.8125rem;
+  --text-base: 0.875rem;
+  --text-md:   0.9375rem;
+  --text-lg:   1.0625rem;
+  --text-xl:   1.375rem;
+  --text-2xl:  1.75rem;
+  --text-3xl:  2.125rem;
+
+  /* --- Space ------------------------------------------------------------ */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-7: 32px;  --sp-8: 40px;  --sp-9: 56px;
+
+  /* --- Radius ----------------------------------------------------------- */
+  --r-sm: 6px;  --r-md: 10px;  --r-lg: 14px;  --r-xl: 20px;  --r-full: 999px;
+
+  /* --- Elevation -------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(22, 32, 58, 0.04);
+  --shadow-md: 0 2px 8px rgba(22, 32, 58, 0.06);
+  --shadow-lg: 0 8px 28px rgba(22, 32, 58, 0.10);
+  --shadow-xl: 0 20px 48px rgba(22, 32, 58, 0.14);
+
+  /* --- Layout ----------------------------------------------------------- */
+  --sidebar-w: 248px;
+  --topbar-h: 76px;
+  --mobile-nav-h: 64px;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}

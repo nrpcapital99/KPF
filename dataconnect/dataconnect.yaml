@@ -1,0 +1,16 @@
+specVersion: "v1"
+serviceId: "kpf-directory"
+location: "asia-south1"
+
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "kpf"
+      cloudSql:
+        # Replace with your Cloud SQL instance id after running:
+        #   firebase init dataconnect
+        instanceId: "kpf-directory-instance"
+      schemaValidation: "COMPATIBLE"
+
+connectorDirs: ["./connector"]
