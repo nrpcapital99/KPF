@@ -1,452 +1,208 @@
 /* ==========================================================================
-   Public volunteer form
-
-   Layouts:
-   • Phones (portrait)      navy hero on top, form card overlapping its edge
-   • Tablets / small laptop same stack, wider card, "how it works" in a row
-   • Desktop (≥ 1024px)     split screen: fixed navy story panel | form
-   • Any short landscape    compact hero so the form isn't pushed off-screen
+   Public volunteer form — deliberately plain.
+   System font, black on white, standard browser controls and native dropdown
+   lists. Everything is scoped to .pf so the team page keeps its own styling.
+   Still usable on phones: one column, full-width fields, 16px text in inputs
+   (so iOS doesn't zoom), and controls tall enough to tap.
    ========================================================================== */
 
-.fp {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+.pf {
   min-height: 100dvh;
-}
-
-/* --- Story panel / hero --------------------------------------------------- */
-.fp__intro {
-  position: relative;
-  overflow: hidden;
-  color: #fff;
-  background:
-    radial-gradient(110% 80% at 100% 0%, rgba(196, 160, 82, 0.24), transparent 55%),
-    radial-gradient(90% 70% at 0% 100%, rgba(36, 59, 107, 0.9), transparent 60%),
-    var(--navy);
   padding:
-    calc(env(safe-area-inset-top, 0px) + clamp(20px, 5vw, 44px))
-    calc(env(safe-area-inset-right, 0px) + var(--gutter))
-    clamp(96px, 18vw, 150px)
-    calc(env(safe-area-inset-left, 0px) + var(--gutter));
+    calc(env(safe-area-inset-top, 0px) + 12px)
+    calc(env(safe-area-inset-right, 0px) + 14px)
+    calc(env(safe-area-inset-bottom, 0px) + 32px)
+    calc(env(safe-area-inset-left, 0px) + 14px);
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
 }
 
-.fp__intro-inner {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 680px;
+.pf__wrap {
+  max-width: 640px;
   margin: 0 auto;
 }
 
-.fp__intro .brand__name {
-  color: #fff;
+.pf h1,
+.pf h2 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  line-height: 1.25;
 }
 
-.fp__watermark {
-  position: absolute;
-  right: clamp(-90px, -8vw, -40px);
-  bottom: clamp(-70px, -6vw, -30px);
-  width: clamp(220px, 40vw, 420px);
-  height: auto;
-  color: rgba(196, 160, 82, 0.08);
-  pointer-events: none;
+.pf h1 {
+  margin: 8px 0 2px;
+  font-size: 24px;
 }
 
-.fp__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: clamp(28px, 7vw, 64px);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gold-200);
+.pf h2 {
+  margin: 16px 0 8px;
+  font-size: 20px;
 }
 
-.fp__eyebrow::before {
-  content: "";
-  width: 28px;
-  height: 1px;
-  background: var(--gold);
+.pf h2:focus {
+  outline: none;
 }
 
-.fp__headline {
-  max-width: 15ch;
-  margin-top: 14px;
-  font-size: var(--step-4);
-  font-weight: 500;
-  line-height: 1.04;
-  letter-spacing: -0.01em;
+.pf p {
+  margin: 0 0 10px;
 }
 
-.fp__headline em {
-  display: block;
-  font-style: italic;
-  color: var(--gold);
+.pf__subtitle {
+  font-size: 18px;
 }
 
-.fp__lede {
-  max-width: 46ch;
-  margin-top: 18px;
-  font-size: var(--step-1);
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.8);
+.pf a {
+  color: #00e;
 }
 
-.fp__quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.66);
-}
-
-.fp__steps {
-  display: none;
-  gap: 18px;
-  margin-top: 36px;
-  padding: 0;
-  list-style: none;
-}
-
-.fp__step {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.fp__step-num {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border: 1px solid rgba(196, 160, 82, 0.55);
-  border-radius: 50%;
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: var(--gold);
-}
-
-.fp__step strong {
-  display: block;
-  font-weight: 600;
-  color: #fff;
-}
-
-.fp__step span > span {
-  display: block;
-  margin-top: 2px;
-  font-size: 0.88rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.64);
-}
-
-.fp__tagline {
-  display: none;
-  margin-top: auto;
-  padding-top: 40px;
-  font-family: var(--font-script);
-  font-size: clamp(1.8rem, 1.2rem + 1.2vw, 2.5rem);
-  /* Caveat's letters reach ~3px below a tighter line box, which makes the
-     panel scrollable and shows a scrollbar on Windows. */
-  line-height: 1.35;
-  color: var(--gold);
-}
-
-/* --- Form column ---------------------------------------------------------- */
-.fp__main {
-  position: relative;
-  min-width: 0;
-  margin-top: clamp(-128px, -15vw, -72px);
-  padding:
-    0
-    calc(env(safe-area-inset-right, 0px) + var(--gutter))
-    calc(env(safe-area-inset-bottom, 0px) + 28px)
-    calc(env(safe-area-inset-left, 0px) + var(--gutter));
-}
-
-.fp__card {
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: clamp(22px, 4.5vw, 44px);
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
-  scroll-margin-top: 16px;
-}
-
-.fp__cardhead {
-  margin-bottom: clamp(22px, 4vw, 32px);
-}
-
-.fp__cardhead h2 {
-  font-size: var(--step-3);
-}
-
-.fp__cardhead p {
-  margin-top: 6px;
-  font-size: 0.9rem;
-  color: var(--ink-3);
+.pf :focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 1px;
 }
 
 /* --- Sections ------------------------------------------------------------- */
-.fp__section {
+.pf fieldset {
   min-width: 0;
+  margin: 0 0 16px;
+  padding: 8px 12px 2px;
+  border: 1px solid #999;
+}
+
+.pf legend {
+  padding: 0 4px;
+  font-weight: bold;
+}
+
+/* --- Fields --------------------------------------------------------------- */
+.pf__field {
+  margin: 0 0 14px;
+}
+
+.pf label {
+  display: block;
+  margin-bottom: 3px;
+  font-weight: bold;
+}
+
+.pf input[type="text"],
+.pf input[type="tel"],
+.pf input[type="email"],
+.pf select,
+.pf textarea {
+  display: block;
+  width: 100%;
   margin: 0;
-  padding: 0;
-  border: 0;
+  padding: 6px;
+  border: 1px solid #767676;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font: inherit;
+  font-size: 16px;
 }
 
-.fp__section + .fp__section {
-  margin-top: clamp(26px, 4.5vw, 36px);
-  padding-top: clamp(26px, 4.5vw, 36px);
-  border-top: 1px solid var(--line);
+.pf input[type="text"],
+.pf input[type="tel"],
+.pf input[type="email"],
+.pf select:not([multiple]) {
+  min-height: 40px;
 }
 
-/* Legends don't lay out like normal blocks; floating them fixes that. */
-.fp__legend {
-  float: left;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 16px;
-  padding: 0;
-  font-family: var(--font-display);
-  font-size: var(--step-2);
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--ink);
+/* Plain browser dropdowns, arrow and all. */
+.pf select {
+  appearance: auto;
+  background-image: none;
 }
 
-.fp__legend + * {
-  clear: both;
+.pf select[multiple] {
+  padding: 2px;
 }
 
-.fp__legend-num {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border: 1px solid var(--gold-200);
-  border-radius: 50%;
-  background: var(--gold-50);
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--gold-600);
+.pf select[multiple] option {
+  padding: 3px 4px;
 }
 
-.fp__section-hint {
-  margin: -8px 0 16px;
-  font-size: 0.9rem;
-  color: var(--ink-3);
+.pf textarea {
+  resize: vertical;
 }
 
-.fp__choice + .fp__choice {
-  margin-top: 22px;
+.pf [aria-invalid="true"] {
+  border-color: #c00;
 }
 
-.fp__choice > .label {
-  display: block;
-  margin-bottom: 12px;
+.pf__sub {
+  margin: 10px 0 0 16px;
 }
 
-.fp__counter {
-  text-align: right;
+.pf__hint {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #444;
 }
 
-.help .fp__counter {
-  text-align: left;
+.pf__req {
+  color: #c00;
 }
 
-.fp__section:disabled {
-  opacity: 0.7;
+.pf__error {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #c00;
 }
 
-/* --- "How would you like to help?" groups ------------------------------- */
-.help {
-  display: grid;
-  gap: 10px;
-  border-radius: var(--r-lg);
+.pf__send-error {
+  padding: 8px;
+  border: 1px solid #c00;
 }
 
-.help__group {
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  transition:
-    border-color 0.15s var(--ease),
-    box-shadow 0.15s var(--ease),
-    background-color 0.15s var(--ease);
-}
-
-.help__group:hover {
-  border-color: var(--line-2);
-}
-
-.help__group--active {
-  border-color: var(--gold-200);
-  background: linear-gradient(180deg, var(--gold-50), var(--surface) 70%);
-}
-
-.help__group--open {
-  border-color: var(--navy-600);
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
-}
-
-.help--error .help__group:not(.help__group--active) {
-  border-color: #e8b9c4;
-}
-
-.help__toggle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 60px;
-  padding: 12px 16px;
-  border-radius: calc(var(--r-lg) - 2px);
-  text-align: left;
-  color: var(--ink);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.help__toggle:focus-visible {
-  outline-offset: -3px;
-}
-
-.help__heading {
-  flex: 1;
-  min-width: 0;
-}
-
-.help__title {
-  display: block;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.help__summary {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  font-size: 0.84rem;
-  color: var(--gold-600);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.help__count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 26px;
-  height: 26px;
-  flex: none;
-  padding: 0 8px;
-  border-radius: var(--r-full);
-  background: var(--navy);
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.help__chevron {
-  width: 20px;
-  height: 20px;
-  flex: none;
-  color: var(--ink-3);
-  transition: transform 0.2s var(--ease);
-}
-
-.help__group--open .help__chevron {
-  color: var(--navy);
-  transform: rotate(180deg);
-}
-
-.help__panel {
-  padding: 4px 16px 18px;
-  animation: help-reveal 0.2s var(--ease);
-}
-
-.help__specifics {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--line);
-}
-
-.help__specifics .fields,
-.help__panel > .field {
-  gap: 7px;
-}
-
-.help__textarea {
-  min-height: 96px;
-}
-
-.help__error {
-  margin-top: 10px;
-}
-
-@keyframes help-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
+/* Ctrl/Cmd-click advice only makes sense with a mouse. */
+@media (hover: none), (pointer: coarse) {
+  .pf__pointer-only {
+    display: none;
   }
 }
 
-/* --- Consent -------------------------------------------------------------- */
-.fp__consent {
+/* --- Consent checkbox ----------------------------------------------------- */
+.pf .pf__consent {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-top: 22px;
-  padding: 14px 16px;
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--cream);
-  font-size: 0.94rem;
-  line-height: 1.45;
-  color: var(--ink);
-  cursor: pointer;
-  transition:
-    border-color 0.15s var(--ease),
-    background-color 0.15s var(--ease);
+  gap: 8px;
+  font-weight: normal;
 }
 
-.fp__consent:hover {
-  border-color: var(--line-2);
-}
-
-.fp__consent input {
-  width: 22px;
-  height: 22px;
+.pf__consent input {
+  width: 20px;
+  height: 20px;
   flex: none;
-  margin: 0;
-  accent-color: var(--navy);
+  margin: 1px 0 0;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+.pf button {
+  min-height: 44px;
+  padding: 6px 18px;
+  border: 1px solid #767676;
+  border-radius: 0;
+  background: #efefef;
+  color: #000;
+  font: inherit;
   cursor: pointer;
 }
 
-.fp__consent--error {
-  border-color: var(--red);
-  background: var(--red-bg);
+.pf button:hover:not(:disabled) {
+  background: #e0e0e0;
 }
 
-.fp__consent-error {
-  margin-top: 8px;
+.pf button:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
-/* Honeypot — present in the DOM for bots, invisible to people. */
-.fp__hp {
+/* --- Honeypot (hidden from people) ---------------------------------------- */
+.pf__hp {
   position: absolute;
   left: -10000px;
   width: 1px;
@@ -454,276 +210,13 @@
   overflow: hidden;
 }
 
-/* --- Submit --------------------------------------------------------------- */
-.fp__submit {
-  display: grid;
-  gap: 14px;
-  margin-top: clamp(26px, 4.5vw, 34px);
-}
-
-.fp__privacy {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.84rem;
-  text-align: center;
-  color: var(--ink-3);
-}
-
-.fp__privacy svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-
-/* --- Thank-you ------------------------------------------------------------ */
-.fp__done {
-  padding: clamp(20px, 6vw, 48px) 4px;
-  text-align: center;
-}
-
-.fp__done-mark {
-  display: grid;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 22px;
-  border-radius: 50%;
-  background: var(--green-bg);
-  color: var(--green);
-  animation: fp-pop 0.5s var(--ease) both;
-}
-
-.fp__done-mark svg {
-  width: 38px;
-  height: 38px;
-  stroke-width: 2.4;
-}
-
-.fp__done h2 {
-  font-size: var(--step-3);
-}
-
-.fp__done h2:focus {
-  outline: none;
-}
-
-.fp__done p {
-  max-width: 42ch;
-  margin: 12px auto 26px;
-  color: var(--ink-2);
-}
-
-@keyframes fp-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 /* --- Footer --------------------------------------------------------------- */
-.fp__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  max-width: 720px;
-  margin: 22px auto 0;
-  padding: 0 6px;
-  font-size: 0.84rem;
-  color: var(--ink-3);
+.pf__foot {
+  margin-top: 24px;
+  font-size: 14px;
 }
 
-.fp__foot a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  font-weight: 600;
-  color: var(--ink-2);
-  text-decoration: none;
-}
-
-.fp__foot a:hover {
-  color: var(--navy);
-  text-decoration: underline;
-}
-
-/* ==========================================================================
-   Responsive
-   ========================================================================== */
-
-/* Very small phones: tighter chips so two fit per row. */
-@media (max-width: 359px) {
-  .chip span {
-    padding: 8px 12px;
-    font-size: 0.86rem;
-  }
-}
-
-/* Tablets and up: show how it works as a row. */
-@media (min-width: 640px) {
-  .fp__quick {
-    display: none;
-  }
-
-  .fp__steps {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .fp__step {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-/* Desktop: split screen. The story panel stays put while the form scrolls. */
-@media (min-width: 1024px) {
-  .fp {
-    grid-template-columns: minmax(360px, 5fr) minmax(0, 7fr);
-  }
-
-  /* The panel itself clips (the leaf watermark deliberately hangs off its
-     edge); only the inner column scrolls, and only on very short windows. */
-  .fp__intro {
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    overflow: hidden;
-    padding: clamp(36px, 5vh, 56px) clamp(36px, 4vw, 72px);
-  }
-
-  .fp__intro-inner {
-    height: 100%;
-    max-width: 540px;
-    margin: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-
-  /* Vertical rhythm scales with window height, so the panel's content never
-     outgrows it (even 2px of overflow shows a scrollbar on Windows). */
-  .fp__eyebrow {
-    margin-top: clamp(24px, 6vh, 80px);
-  }
-
-  .fp__steps {
-    margin-top: clamp(20px, 3.5vh, 36px);
-  }
-
-  .fp__tagline {
-    padding-top: clamp(20px, 3.5vh, 40px);
-  }
-
-  .fp__steps {
-    grid-template-columns: 1fr;
-  }
-
-  .fp__step {
-    flex-direction: row;
-    gap: 14px;
-  }
-
-  .fp__tagline {
-    display: block;
-  }
-
-  .fp__main {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin-top: 0;
-    padding: clamp(32px, 6vh, 64px) clamp(28px, 4vw, 72px);
-  }
-
-  .fp__card {
-    box-shadow: var(--shadow-md);
-  }
-}
-
-/* Short desktop windows — including very common 1366×768 and 1280×720
-   laptops once browser chrome is taken off — trim the panel. */
-@media (min-width: 1024px) and (max-height: 800px) {
-  .fp__lede {
-    margin-top: 12px;
-  }
-
-  .fp__steps {
-    gap: 12px;
-    margin-top: 24px;
-  }
-
-  .fp__step span > span {
-    display: none;
-  }
-
-  .fp__tagline {
-    padding-top: 24px;
-  }
-}
-
-/* Phones and small tablets turned sideways: little height, plenty of width.
-   Collapse the hero to a strip so the form is visible straight away. */
-@media (orientation: landscape) and (max-height: 540px) {
-  .fp {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .fp__intro {
-    position: relative;
-    height: auto;
-    overflow: hidden;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 14px);
-    padding-bottom: 76px;
-  }
-
-  .fp__intro-inner {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    column-gap: 28px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  .fp__eyebrow,
-  .fp__lede,
-  .fp__quick,
-  .fp__steps,
-  .fp__tagline {
-    display: none;
-  }
-
-  .fp__headline {
-    max-width: none;
-    margin-top: 0;
-    font-size: clamp(1.4rem, 1rem + 2vw, 2rem);
-  }
-
-  .fp__headline em {
-    display: inline;
-  }
-
-  .fp__watermark {
-    width: 200px;
-  }
-
-  .fp__main {
-    display: block;
-    margin-top: -56px;
-    padding-top: 0;
-  }
-
-  .fp__card {
-    max-width: 900px;
-  }
+.pf__foot a {
+  display: inline-block;
+  padding: 10px 0;
 }

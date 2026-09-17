@@ -12,12 +12,13 @@ There is no backend server. It's a React front end talking directly to
 
 ## What's in it
 
-**The form (`/`)**: anyone can fill it in, no account needed.
+**The form (`/`)**: anyone can fill it in, no account needed. It's
+deliberately plain: standard browser controls and dropdown lists.
 Name, phone/WhatsApp, email and city; **how they'd like to help** (seven
-areas such as Teaching & Education or Website & Technology, each opening to
-specific options, plus *Other Ways to Contribute*); time they can give; when
-they're free; and anything more. Validation is inline and friendly, and a
-hidden honeypot field quietly swallows bot submissions.
+areas such as Teaching & Education or Website & Technology, each a list where
+several options can be picked, plus *Other Ways to Contribute*); how much time
+they can give; when they're free; and anything more about them. A hidden
+honeypot field quietly swallows bot submissions.
 
 **The team page (`/admin`)**: sign in with a team account to:
 
@@ -30,7 +31,7 @@ hidden honeypot field quietly swallows bot submissions.
 - export what you're looking at to CSV (opens correctly in Excel)
 - delete spam
 
-Both pages adapt to phones, tablets and desktops in either orientation.
+Both pages work on phones, tablets and desktops in either orientation.
 
 **Google Sheet**: responses can also flow into a Google Sheet automatically.
 See [`google-sheets/SETUP.md`](google-sheets/SETUP.md) (about 5 minutes, once).
