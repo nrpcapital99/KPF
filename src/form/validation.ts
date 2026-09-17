@@ -6,7 +6,10 @@ export interface FormValues {
   phone: string;
   email: string;
   city: string;
-  interests: string[];
+  helpWith: string[];
+  digitalSpecifics: string;
+  techSpecifics: string;
+  otherContribution: string;
   commitment: string;
   preferredTimes: string[];
   message: string;
@@ -15,7 +18,18 @@ export interface FormValues {
   website: string;
 }
 
-export type FieldName = "fullName" | "phone" | "email" | "city" | "message" | "consent";
+export type FieldName =
+  | "fullName"
+  | "phone"
+  | "email"
+  | "city"
+  | "helpWith"
+  | "digitalSpecifics"
+  | "techSpecifics"
+  | "otherContribution"
+  | "message"
+  | "consent";
+
 export type FieldErrors = Partial<Record<FieldName, string>>;
 
 /** Order errors are surfaced in, and the order focus moves through them. */
@@ -24,6 +38,10 @@ export const FIELD_ORDER: FieldName[] = [
   "phone",
   "email",
   "city",
+  "helpWith",
+  "digitalSpecifics",
+  "techSpecifics",
+  "otherContribution",
   "message",
   "consent",
 ];
@@ -33,7 +51,10 @@ export const EMPTY_VALUES: FormValues = {
   phone: "",
   email: "",
   city: "",
-  interests: [],
+  helpWith: [],
+  digitalSpecifics: "",
+  techSpecifics: "",
+  otherContribution: "",
   commitment: "",
   preferredTimes: [],
   message: "",
@@ -77,6 +98,21 @@ export function validate(values: FormValues): FieldErrors {
     errors.city = "Please shorten the city name.";
   }
 
+  if (values.helpWith.length === 0 && !values.otherContribution.trim()) {
+    errors.helpWith =
+      "Please choose at least one way you'd like to help, or describe it under Other Ways to Contribute.";
+  }
+
+  if (values.digitalSpecifics.trim().length > LIMITS.specifics) {
+    errors.digitalSpecifics = `Please keep this under ${LIMITS.specifics} characters.`;
+  }
+  if (values.techSpecifics.trim().length > LIMITS.specifics) {
+    errors.techSpecifics = `Please keep this under ${LIMITS.specifics} characters.`;
+  }
+  if (values.otherContribution.trim().length > LIMITS.otherContribution) {
+    errors.otherContribution = `Please keep this under ${LIMITS.otherContribution} characters.`;
+  }
+
   if (values.message.trim().length > LIMITS.message) {
     errors.message = `Please keep this under ${LIMITS.message} characters.`;
   }
@@ -95,7 +131,10 @@ export function toInput(values: FormValues): VolunteerInput {
     phone: values.phone.trim().replace(/\s+/g, " "),
     email: values.email.trim().toLowerCase(),
     city: values.city.trim() || null,
-    interests: values.interests,
+    helpWith: values.helpWith,
+    digitalSpecifics: values.digitalSpecifics.trim() || null,
+    techSpecifics: values.techSpecifics.trim() || null,
+    otherContribution: values.otherContribution.trim() || null,
     commitment: values.commitment || null,
     preferredTimes: values.preferredTimes,
     message: values.message.trim() || null,

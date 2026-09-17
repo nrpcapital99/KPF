@@ -13,14 +13,17 @@ There is no backend server. It's a React front end talking directly to
 ## What's in it
 
 **The form (`/`)**: anyone can fill it in, no account needed.
-Name, phone/WhatsApp, email, city, how they'd like to help, time they can
-give, when they're free, and a free-text note. Validation is inline and
-friendly, and a hidden honeypot field quietly swallows bot submissions.
+Name, phone/WhatsApp, email and city; **how they'd like to help** (seven
+areas such as Teaching & Education or Website & Technology, each opening to
+specific options, plus *Other Ways to Contribute*); time they can give; when
+they're free; and anything more. Validation is inline and friendly, and a
+hidden honeypot field quietly swallows bot submissions.
 
 **The team page (`/admin`)**: sign in with a team account to:
 
 - see responses live, newest first, with no refresh needed
-- search, and filter by status or area of interest
+- search, and filter by status or help area, e.g. everyone who can help with
+  Website & Technology
 - call, WhatsApp or email someone in one tap
 - move a response through *New → Contacted → Joined → Archived*
 - add private team notes
@@ -28,6 +31,9 @@ friendly, and a hidden honeypot field quietly swallows bot submissions.
 - delete spam
 
 Both pages adapt to phones, tablets and desktops in either orientation.
+
+**Google Sheet**: responses can also flow into a Google Sheet automatically.
+See [`google-sheets/SETUP.md`](google-sheets/SETUP.md) (about 5 minutes, once).
 
 ## Running it locally
 
@@ -65,22 +71,31 @@ the account's UID with a copy button, so step 3 is easy.
 
 ## Changing the form's options
 
-The choices for *how you'd like to help*, *time you can give* and *when you're
-free* live in [`src/config.ts`](src/config.ts). **The same IDs are listed in
-`firestore.rules`**, which rejects any value not on its list. Change both,
-then redeploy both, or submissions using a new option will be refused.
+The options for *how you'd like to help*, *time you can give* and *when you're
+free* are defined in [`src/config.ts`](src/config.ts). The same option IDs also
+appear in two other places:
+
+- **`firestore.rules`**: rejects any value that isn't on its list
+- **`google-sheets/Code.gs`**: turns IDs into readable labels in the Sheet
+
+Change all three together. `npm run build` (and therefore `firebase deploy`)
+runs `npm run check:options` first and **stops if they don't match**, naming
+exactly what's out of step. After deploying, paste the updated `Code.gs` into
+the Sheet's Apps Script and run **Kanak Parakh → Full resync**.
 
 ## Project layout
 
 ```
 src/
-  form/        the public form: page, validation, submit (Firestore Lite)
-  admin/       the team page: sign in, responses, cards, CSV export
-  components/  brand mark and icons
-  styles/      design tokens and shared styles
-  config.ts    form options, limits, foundation name
+  form/          the public form: page, validation, submit (Firestore Lite)
+  admin/         the team page: sign in, responses, cards, CSV export
+  components/    brand mark and icons
+  styles/        design tokens and shared styles
+  config.ts      form options, limits, foundation name
+google-sheets/   Apps Script that copies responses into a Google Sheet
+scripts/         check-options.mjs: keeps options in step across files
 firestore.rules
-firebase.json  hosting: SPA rewrites, caching, security headers
+firebase.json    hosting: SPA rewrites, caching, security headers
 ```
 
 ## Performance notes

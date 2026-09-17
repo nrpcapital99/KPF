@@ -11,11 +11,12 @@ import {
   LogOutIcon,
   SearchIcon,
 } from "../components/icons";
-import { INTEREST_LABEL, INTERESTS, STATUSES } from "../config";
+import { HELP_CATEGORIES, HELP_OPTION_LABEL, OTHER_CONTRIBUTION_ID, STATUSES } from "../config";
 import type { Volunteer, VolunteerStatus } from "../types";
 import ResponseCard from "./ResponseCard";
 import { downloadCsv } from "./csv";
 import { signOut, useResponses } from "./data";
+import { categoriesOf, legacyLabels } from "./helpSummary";
 
 type StatusFilter = "ALL" | VolunteerStatus;
 type Toast = { kind: "ok" | "error"; text: string } | null;
@@ -56,7 +57,11 @@ export default function Responses({ user }: { user: User }) {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (status !== "ALL" && row.status !== status) return false;
-      if (interest !== "ALL" && !row.interests.includes(interest)) return false;
+      if (interest === OTHER_CONTRIBUTION_ID) {
+        if (!row.otherContribution) return false;
+      } else if (interest !== "ALL" && !categoriesOf(row).has(interest)) {
+        return false;
+      }
       if (!q) return true;
       return [
         row.fullName,
@@ -65,7 +70,11 @@ export default function Responses({ user }: { user: User }) {
         row.city ?? "",
         row.message ?? "",
         row.note ?? "",
-        ...row.interests.map((id) => INTEREST_LABEL[id] ?? id),
+        row.digitalSpecifics ?? "",
+        row.techSpecifics ?? "",
+        row.otherContribution ?? "",
+        ...row.helpWith.map((id) => HELP_OPTION_LABEL[id] ?? id),
+        ...legacyLabels(row),
       ]
         .join(" ")
         .toLowerCase()
@@ -210,11 +219,12 @@ export default function Responses({ user }: { user: User }) {
                   onChange={(e) => setInterest(e.target.value)}
                 >
                   <option value="ALL">All areas</option>
-                  {INTERESTS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
+                  {HELP_CATEGORIES.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.label}
                     </option>
                   ))}
+                  <option value={OTHER_CONTRIBUTION_ID}>Other ways to contribute</option>
                 </select>
               </label>
             </div>

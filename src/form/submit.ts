@@ -18,10 +18,13 @@ const TIMEOUT_MS = 20_000;
 export async function submitVolunteer(input: VolunteerInput): Promise<void> {
   const db = getFirestore(firebaseApp());
 
+  // updatedAt is set on creation too, so the Google Sheet sync can pick up new
+  // and edited responses with a single "changed since" query.
   const write = addDoc(collection(db, "volunteers"), {
     ...input,
     status: "NEW",
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
   // On a weak mobile connection a request can hang rather than fail. Give up

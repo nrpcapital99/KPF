@@ -9,15 +9,10 @@ import {
   PhoneIcon,
   TrashIcon,
 } from "../components/icons";
-import {
-  COMMITMENT_LABEL,
-  INTEREST_LABEL,
-  LIMITS,
-  STATUSES,
-  TIME_LABEL,
-} from "../config";
+import { COMMITMENT_LABEL, LIMITS, STATUSES, TIME_LABEL } from "../config";
 import type { Volunteer, VolunteerStatus } from "../types";
 import { deleteResponse, setNote, setStatus } from "./data";
+import { legacyLabels, summariseHelp } from "./helpSummary";
 
 type Toast = { kind: "ok" | "error"; text: string };
 
@@ -81,6 +76,8 @@ export default function ResponseCard({
   }
 
   const tone = STATUSES.find((s) => s.id === row.status)?.tone ?? "slate";
+  const helpGroups = summariseHelp(row);
+  const legacy = legacyLabels(row);
   const long = (row.message?.length ?? 0) > LONG_MESSAGE;
 
   async function changeStatus(next: VolunteerStatus) {
@@ -213,14 +210,42 @@ export default function ResponseCard({
         )}
       </dl>
 
-      {row.interests.length > 0 && (
-        <ul className="rc__tags" aria-label="How they'd like to help">
-          {row.interests.map((id) => (
-            <li key={id} className="rc__tag">
-              {INTEREST_LABEL[id] ?? id}
-            </li>
+      {(helpGroups.length > 0 || row.otherContribution || legacy.length > 0) && (
+        <section className="rc__help" aria-label="How they'd like to help">
+          {helpGroups.map((group) => (
+            <div key={group.categoryId} className="rc__help-group">
+              <p className="rc__help-label">{group.label}</p>
+              {group.options.length > 0 && (
+                <ul className="rc__tags">
+                  {group.options.map((label) => (
+                    <li key={label} className="rc__tag">
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {group.specifics && <p className="rc__specifics">{group.specifics}</p>}
+            </div>
           ))}
-        </ul>
+          {row.otherContribution && (
+            <div className="rc__help-group">
+              <p className="rc__help-label">Other ways to contribute</p>
+              <p className="rc__specifics">{row.otherContribution}</p>
+            </div>
+          )}
+          {legacy.length > 0 && (
+            <div className="rc__help-group">
+              <p className="rc__help-label">Interests (earlier form)</p>
+              <ul className="rc__tags">
+                {legacy.map((label) => (
+                  <li key={label} className="rc__tag rc__tag--legacy">
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       )}
 
       {row.message && (

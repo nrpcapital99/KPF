@@ -32,11 +32,21 @@ service cloud.firestore {
         || (data[key] is string && data[key].size() <= maxLength);
     }
 
-    // ⚠ These lists mirror src/config.ts. Change both together, then redeploy.
-    function interestIds() {
-      return ['education', 'training', 'outreach', 'events', 'fundraising',
-              'social_media', 'content', 'digital_marketing', 'design',
-              'branding', 'research', 'strategy'];
+    // ⚠ These lists mirror src/config.ts (and google-sheets/Code.gs).
+    //   Change them together, then redeploy.
+    function helpOptionIds() {
+      return ['edu_teaching', 'edu_tutoring', 'edu_career_guidance',
+              'edu_subject_expertise', 'edu_other', 'trn_soft_skills',
+              'trn_communication', 'trn_financial_literacy', 'trn_career_readiness',
+              'trn_professional', 'trn_other', 'dm_linkedin', 'dm_instagram',
+              'dm_facebook', 'dm_strategy', 'dm_paid_ads', 'dm_content_strategy',
+              'dm_seo', 'dm_other', 'web_development', 'web_maintenance', 'web_uiux',
+              'web_seo', 'web_content', 'web_support', 'web_other', 'vid_shooting',
+              'vid_editing', 'vid_reels', 'vid_animation', 'vid_photography',
+              'vid_other', 'des_graphic', 'des_posters', 'des_presentations',
+              'des_branding', 'des_illustration', 'des_tools', 'des_other',
+              'fr_fundraising', 'fr_donor_outreach', 'fr_corporate', 'fr_csr',
+              'fr_sponsorships', 'fr_events', 'fr_networking'];
     }
 
     function commitmentIds() {
@@ -53,10 +63,14 @@ service cloud.firestore {
 
     function isValidSubmission(d) {
       return d.keys().hasOnly([
-          'fullName', 'phone', 'email', 'city', 'interests', 'commitment',
-          'preferredTimes', 'message', 'consent', 'status', 'createdAt'
+          'fullName', 'phone', 'email', 'city', 'helpWith', 'digitalSpecifics',
+          'techSpecifics', 'otherContribution', 'commitment', 'preferredTimes',
+          'message', 'consent', 'status', 'createdAt', 'updatedAt'
         ])
-        && d.keys().hasAll(['fullName', 'phone', 'email', 'consent', 'status', 'createdAt'])
+        && d.keys().hasAll([
+          'fullName', 'phone', 'email', 'helpWith', 'consent', 'status',
+          'createdAt', 'updatedAt'
+        ])
 
         && d.fullName is string
         && d.fullName.size() >= 1 && d.fullName.size() <= 100
@@ -70,11 +84,20 @@ service cloud.firestore {
         && d.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
 
         && optionalString(d, 'city', 80)
+        && optionalString(d, 'digitalSpecifics', 500)
+        && optionalString(d, 'techSpecifics', 500)
+        && optionalString(d, 'otherContribution', 1000)
         && optionalString(d, 'message', 1000)
 
-        && (!('interests' in d)
-            || (d.interests is list && d.interests.size() <= 12
-                && d.interests.hasOnly(interestIds())))
+        && d.helpWith is list
+        && d.helpWith.size() <= 46
+        && d.helpWith.hasOnly(helpOptionIds())
+        // Must say how they'd like to help: at least one option, or a note
+        // under "Other Ways to Contribute".
+        && (d.helpWith.size() > 0
+            || (('otherContribution' in d) && d.otherContribution is string
+                && d.otherContribution.size() > 0))
+
         && (!('preferredTimes' in d)
             || (d.preferredTimes is list && d.preferredTimes.size() <= 4
                 && d.preferredTimes.hasOnly(timeIds())))
@@ -84,7 +107,8 @@ service cloud.firestore {
         && d.consent == true
         && d.status == 'NEW'
         // Must be the server's clock, so a submission can't be backdated.
-        && d.createdAt == request.time;
+        && d.createdAt == request.time
+        && d.updatedAt == request.time;
     }
 
     match /volunteers/{responseId} {

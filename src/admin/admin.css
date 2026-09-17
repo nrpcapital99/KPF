@@ -789,3 +789,40 @@
 .ad__uid .btn {
   min-height: 38px;
 }
+
+/* --- How they'd like to help (on each card) ------------------------------- */
+.rc__help {
+  display: grid;
+  gap: 12px;
+}
+
+.rc__help-group {
+  display: grid;
+  gap: 6px;
+}
+
+.rc__help-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.rc__specifics {
+  padding: 8px 12px;
+  border-left: 3px solid var(--gold-200);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--cream);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rc__tag--legacy {
+  border-color: var(--line-2);
+  background: var(--slate-bg);
+  color: var(--slate);
+}

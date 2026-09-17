@@ -162,3 +162,9 @@ export const InboxIcon = (p: P) => (
     <path d="M5.6 5.6 3.5 13v5.3a2.2 2.2 0 0 0 2.2 2.2h12.6a2.2 2.2 0 0 0 2.2-2.2V13l-2.1-7.4A2.2 2.2 0 0 0 16.3 4H7.7a2.2 2.2 0 0 0-2.1 1.6z" />
   </svg>
 );
+
+export const ChevronDownIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);

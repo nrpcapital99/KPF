@@ -151,7 +151,9 @@
   padding-top: 40px;
   font-family: var(--font-script);
   font-size: clamp(1.8rem, 1.2rem + 1.2vw, 2.5rem);
-  line-height: 1.1;
+  /* Caveat's letters reach ~3px below a tighter line box, which makes the
+     panel scrollable and shows a scrollbar on Windows. */
+  line-height: 1.35;
   color: var(--gold);
 }
 
@@ -261,8 +263,145 @@
   text-align: right;
 }
 
+.help .fp__counter {
+  text-align: left;
+}
+
 .fp__section:disabled {
   opacity: 0.7;
+}
+
+/* --- "How would you like to help?" groups ------------------------------- */
+.help {
+  display: grid;
+  gap: 10px;
+  border-radius: var(--r-lg);
+}
+
+.help__group {
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  transition:
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.help__group:hover {
+  border-color: var(--line-2);
+}
+
+.help__group--active {
+  border-color: var(--gold-200);
+  background: linear-gradient(180deg, var(--gold-50), var(--surface) 70%);
+}
+
+.help__group--open {
+  border-color: var(--navy-600);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.help--error .help__group:not(.help__group--active) {
+  border-color: #e8b9c4;
+}
+
+.help__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 16px;
+  border-radius: calc(var(--r-lg) - 2px);
+  text-align: left;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.help__toggle:focus-visible {
+  outline-offset: -3px;
+}
+
+.help__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.help__title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.help__summary {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 0.84rem;
+  color: var(--gold-600);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.help__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.help__chevron {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--ink-3);
+  transition: transform 0.2s var(--ease);
+}
+
+.help__group--open .help__chevron {
+  color: var(--navy);
+  transform: rotate(180deg);
+}
+
+.help__panel {
+  padding: 4px 16px 18px;
+  animation: help-reveal 0.2s var(--ease);
+}
+
+.help__specifics {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.help__specifics .fields,
+.help__panel > .field {
+  gap: 7px;
+}
+
+.help__textarea {
+  min-height: 96px;
+}
+
+.help__error {
+  margin-top: 10px;
+}
+
+@keyframes help-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 /* --- Consent -------------------------------------------------------------- */
@@ -471,8 +610,18 @@
     scrollbar-width: thin;
   }
 
+  /* Vertical rhythm scales with window height, so the panel's content never
+     outgrows it (even 2px of overflow shows a scrollbar on Windows). */
   .fp__eyebrow {
-    margin-top: clamp(32px, 9vh, 96px);
+    margin-top: clamp(24px, 6vh, 80px);
+  }
+
+  .fp__steps {
+    margin-top: clamp(20px, 3.5vh, 36px);
+  }
+
+  .fp__tagline {
+    padding-top: clamp(20px, 3.5vh, 40px);
   }
 
   .fp__steps {
@@ -501,8 +650,9 @@
   }
 }
 
-/* Short desktop windows (e.g. a laptop with browser chrome): trim the panel. */
-@media (min-width: 1024px) and (max-height: 760px) {
+/* Short desktop windows — including very common 1366×768 and 1280×720
+   laptops once browser chrome is taken off — trim the panel. */
+@media (min-width: 1024px) and (max-height: 800px) {
   .fp__lede {
     margin-top: 12px;
   }

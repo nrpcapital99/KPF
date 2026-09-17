@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import Brand from "../components/Brand";
-import { AlertIcon, CheckIcon, LockIcon, LogoMark } from "../components/icons";
+import { AlertIcon, CheckIcon, ChevronDownIcon, LockIcon, LogoMark } from "../components/icons";
 import {
   CITY_SUGGESTIONS,
   COMMITMENTS,
   FOUNDATION,
-  INTERESTS,
+  HELP_CATEGORIES,
   LIMITS,
   TIMES,
 } from "../config";
@@ -25,6 +26,16 @@ const loadSubmit = () => (submitModule ??= import("./submit"));
 
 type Phase = "editing" | "sending" | "sent";
 
+const OTHER_GROUP = "other";
+
+/** Which help group a field lives in, so an error inside a closed group can be revealed. */
+const FIELD_GROUP: Partial<Record<FieldName, string>> = {
+  helpWith: HELP_CATEGORIES[0].id,
+  digitalSpecifics: "digital",
+  techSpecifics: "technology",
+  otherContribution: OTHER_GROUP,
+};
+
 export default function VolunteerForm() {
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES);
   const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
@@ -32,6 +43,7 @@ export default function VolunteerForm() {
   const [phase, setPhase] = useState<Phase>("editing");
   const [sendError, setSendError] = useState<string | null>(null);
   const [thankName, setThankName] = useState("");
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
   const doneHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -63,7 +75,13 @@ export default function VolunteerForm() {
   const blur = (field: FieldName) => () =>
     setTouched((current) => ({ ...current, [field]: true }));
 
-  function toggle(key: "interests" | "preferredTimes", id: string) {
+  function toggleGroup(id: string) {
+    setOpenGroups((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  function toggle(key: "helpWith" | "preferredTimes", id: string) {
     setValues((current) => {
       const list = current[key];
       return {
@@ -95,6 +113,15 @@ export default function VolunteerForm() {
     const current = validate(values);
     const firstInvalid = FIELD_ORDER.find((field) => current[field]);
     if (firstInvalid) {
+      const group = FIELD_GROUP[firstInvalid];
+      if (group && firstInvalid !== "helpWith") {
+        // Open the group synchronously so the field exists before we focus it.
+        // (Waiting for an animation frame fails in background tabs, where
+        // browsers pause frames.)
+        flushSync(() =>
+          setOpenGroups((current) => (current.includes(group) ? current : [...current, group])),
+        );
+      }
       document.getElementById(`f-${firstInvalid}`)?.focus();
       return;
     }
@@ -105,6 +132,7 @@ export default function VolunteerForm() {
       await submitVolunteer(toInput(values));
       setThankName(firstName);
       setValues(EMPTY_VALUES);
+      setOpenGroups([]);
       setTouched({});
       setAttempted(false);
       setPhase("sent");
@@ -308,22 +336,113 @@ export default function VolunteerForm() {
                   <span className="fp__legend-num" aria-hidden>
                     2
                   </span>
-                  How would you like to help?
+                  <span>
+                    How would you like to help?
+                    <span className="req" aria-hidden>
+                      *
+                    </span>
+                  </span>
                 </legend>
-                <p className="fp__section-hint">Pick as many as you like — or skip this.</p>
+                <p className="fp__section-hint">Pick as many as you like.</p>
 
-                <div className="chips">
-                  {INTERESTS.map((item) => (
-                    <Chip
-                      key={item.id}
-                      type="checkbox"
-                      name="interests"
-                      label={item.label}
-                      checked={values.interests.includes(item.id)}
-                      onChange={() => toggle("interests", item.id)}
-                    />
+                <div
+                  className={`help${showError("helpWith") ? " help--error" : ""}`}
+                  aria-describedby={showError("helpWith") ? "f-helpWith-error" : undefined}
+                >
+                  {HELP_CATEGORIES.map((category, index) => (
+                    <HelpGroup
+                      key={category.id}
+                      toggleId={index === 0 ? "f-helpWith" : undefined}
+                      title={category.label}
+                      open={openGroups.includes(category.id)}
+                      onToggleOpen={() => toggleGroup(category.id)}
+                      summary={category.options
+                        .filter((option) => values.helpWith.includes(option.id))
+                        .map((option) => option.label)}
+                    >
+                      <div className="chips">
+                        {category.options.map((option) => (
+                          <Chip
+                            key={option.id}
+                            type="checkbox"
+                            name="helpWith"
+                            label={option.label}
+                            checked={values.helpWith.includes(option.id)}
+                            onChange={() => toggle("helpWith", option.id)}
+                          />
+                        ))}
+                      </div>
+
+                      {category.specifics && (
+                        <div className="help__specifics">
+                          <Field
+                            id={`f-${category.specifics.field}`}
+                            label="What can you specifically help with?"
+                            optional
+                            error={showError(category.specifics.field)}
+                            hint={category.specifics.hint}
+                            full
+                          >
+                            <textarea
+                              id={`f-${category.specifics.field}`}
+                              className="textarea help__textarea"
+                              value={values[category.specifics.field]}
+                              onChange={(e) =>
+                                set(category.specifics!.field, e.target.value)
+                              }
+                              onBlur={blur(category.specifics.field)}
+                              maxLength={LIMITS.specifics}
+                              rows={3}
+                              {...describedBy(
+                                `f-${category.specifics.field}`,
+                                showError(category.specifics.field),
+                                true,
+                              )}
+                            />
+                          </Field>
+                        </div>
+                      )}
+                    </HelpGroup>
                   ))}
+
+                  <HelpGroup
+                    title="Other Ways to Contribute"
+                    open={openGroups.includes(OTHER_GROUP)}
+                    onToggleOpen={() => toggleGroup(OTHER_GROUP)}
+                    summary={values.otherContribution.trim() ? ["Added"] : []}
+                  >
+                    <Field
+                      id="f-otherContribution"
+                      label="Tell us how else you'd like to contribute"
+                      optional
+                      error={showError("otherContribution")}
+                      hint="Anything that doesn't fit the options above."
+                      full
+                    >
+                      <textarea
+                        id="f-otherContribution"
+                        className="textarea help__textarea"
+                        value={values.otherContribution}
+                        onChange={(e) => set("otherContribution", e.target.value)}
+                        onBlur={blur("otherContribution")}
+                        maxLength={LIMITS.otherContribution}
+                        rows={3}
+                        {...describedBy(
+                          "f-otherContribution",
+                          showError("otherContribution"),
+                          true,
+                        )}
+                      />
+                    </Field>
+                  </HelpGroup>
                 </div>
+
+                {showError("helpWith") && (
+                  <p id="f-helpWith-error" className="field__error help__error">
+                    <AlertIcon />
+                    {showError("helpWith")}
+                  </p>
+                )}
               </fieldset>
 
               <fieldset className="fp__section" disabled={sending}>
@@ -335,7 +454,7 @@ export default function VolunteerForm() {
                 </legend>
                 <p className="fp__section-hint">A rough idea is fine.</p>
 
-                <ChoiceGroup label="How much time could you give?">
+                <ChoiceGroup label="How much time can you give?">
                   {COMMITMENTS.map((item) => (
                     <Chip
                       key={item.id}
@@ -367,7 +486,7 @@ export default function VolunteerForm() {
                   <span className="fp__legend-num" aria-hidden>
                     4
                   </span>
-                  Anything else?
+                  Anything more?
                 </legend>
 
                 <div className="fields">
@@ -524,6 +643,58 @@ function Field({
           {hint}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * One expandable category. Collapsed, it shows what's been picked inside it, so
+ * people can see their choices without reopening every group.
+ */
+function HelpGroup({
+  title,
+  open,
+  onToggleOpen,
+  summary,
+  toggleId,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggleOpen: () => void;
+  summary: string[];
+  toggleId?: string;
+  children: ReactNode;
+}) {
+  const panelId = useId();
+  const active = summary.length > 0;
+
+  return (
+    <div
+      className={`help__group${open ? " help__group--open" : ""}${active ? " help__group--active" : ""}`}
+    >
+      <button
+        type="button"
+        id={toggleId}
+        className="help__toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={onToggleOpen}
+      >
+        <span className="help__heading">
+          <span className="help__title">{title}</span>
+          {active && !open && <span className="help__summary">{summary.join(", ")}</span>}
+        </span>
+        {active && (
+          <span className="help__count">
+            {summary[0] === "Added" ? "Added" : summary.length}
+          </span>
+        )}
+        <ChevronDownIcon className="help__chevron" />
+      </button>
+      <div id={panelId} className="help__panel" hidden={!open}>
+        {children}
+      </div>
     </div>
   );
 }
