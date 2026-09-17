@@ -1,4 +1,4 @@
-import { LIMITS } from "../config";
+import { HELP_CATEGORIES, LIMITS, OTHER_CONTRIBUTION_ID } from "../config";
 import type { VolunteerInput } from "../types";
 
 export interface FormValues {
@@ -6,6 +6,8 @@ export interface FormValues {
   phone: string;
   email: string;
   city: string;
+  /** Areas chosen first (category ids, plus "other"). Decides which option lists show; not stored. */
+  helpAreas: string[];
   helpWith: string[];
   digitalSpecifics: string;
   techSpecifics: string;
@@ -24,6 +26,7 @@ export type FieldName =
   | "email"
   | "city"
   | "helpWith"
+  | "helpOptions"
   | "digitalSpecifics"
   | "techSpecifics"
   | "otherContribution"
@@ -39,6 +42,7 @@ export const FIELD_ORDER: FieldName[] = [
   "email",
   "city",
   "helpWith",
+  "helpOptions",
   "digitalSpecifics",
   "techSpecifics",
   "otherContribution",
@@ -51,6 +55,7 @@ export const EMPTY_VALUES: FormValues = {
   phone: "",
   email: "",
   city: "",
+  helpAreas: [],
   helpWith: [],
   digitalSpecifics: "",
   techSpecifics: "",
@@ -98,9 +103,17 @@ export function validate(values: FormValues): FieldErrors {
     errors.city = "Please shorten the city name.";
   }
 
-  if (values.helpWith.length === 0 && !values.otherContribution.trim()) {
-    errors.helpWith =
-      "Please choose at least one way you'd like to help, or write something under Other ways to contribute.";
+  if (values.helpAreas.length === 0) {
+    errors.helpWith = "Please choose at least one area you'd like to help with.";
+  } else {
+    const incomplete = firstIncompleteArea(values);
+    if (incomplete) {
+      errors.helpOptions = `Please pick at least one option under ${incomplete.label}, or remove it from your areas.`;
+    }
+    if (values.helpAreas.includes(OTHER_CONTRIBUTION_ID) && !values.otherContribution.trim()) {
+      errors.otherContribution =
+        "Please tell us how else you'd like to help, or remove “Other ways to contribute” from your areas.";
+    }
   }
 
   if (values.digitalSpecifics.trim().length > LIMITS.specifics) {
@@ -109,7 +122,7 @@ export function validate(values: FormValues): FieldErrors {
   if (values.techSpecifics.trim().length > LIMITS.specifics) {
     errors.techSpecifics = `Please keep this under ${LIMITS.specifics} characters.`;
   }
-  if (values.otherContribution.trim().length > LIMITS.otherContribution) {
+  if (!errors.otherContribution && values.otherContribution.trim().length > LIMITS.otherContribution) {
     errors.otherContribution = `Please keep this under ${LIMITS.otherContribution} characters.`;
   }
 
@@ -122,6 +135,15 @@ export function validate(values: FormValues): FieldErrors {
   }
 
   return errors;
+}
+
+/** The first chosen area that has no option picked inside it yet. */
+export function firstIncompleteArea(values: FormValues) {
+  return HELP_CATEGORIES.find(
+    (category) =>
+      values.helpAreas.includes(category.id) &&
+      !category.options.some((option) => values.helpWith.includes(option.id)),
+  );
 }
 
 /** Shapes form state into exactly the document firestore.rules accepts. */

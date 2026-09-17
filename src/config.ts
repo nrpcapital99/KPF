@@ -132,11 +132,17 @@ export const HELP_CATEGORIES: HelpCategory[] = [
 export const OTHER_CONTRIBUTION_ID = "other";
 
 export const COMMITMENTS = [
-  { id: "month", label: "A few hours a month" },
-  { id: "w1_3", label: "1–3 hrs a week" },
-  { id: "w4_8", label: "4–8 hrs a week" },
-  { id: "w8_plus", label: "8+ hrs a week" },
+  { id: "w1_2", label: "1 to 2 hrs a week" },
+  { id: "w3_4", label: "3 to 4 hrs a week" },
 ] as const;
+
+/** Time options offered by earlier versions of the form, kept so old responses stay readable. */
+export const LEGACY_COMMITMENT_LABEL: Record<string, string> = {
+  month: "A few hours a month",
+  w1_3: "1–3 hrs a week",
+  w4_8: "4–8 hrs a week",
+  w8_plus: "8+ hrs a week",
+};
 
 export const TIMES = [
   { id: "weekday_mornings", label: "Weekday mornings" },
@@ -202,7 +208,7 @@ const labelMap = (list: ReadonlyArray<{ id: string; label: string }>) =>
   >;
 
 export const HELP_OPTION_LABEL = labelMap(HELP_CATEGORIES.flatMap((c) => c.options));
-export const COMMITMENT_LABEL = labelMap(COMMITMENTS);
+export const COMMITMENT_LABEL = { ...LEGACY_COMMITMENT_LABEL, ...labelMap(COMMITMENTS) };
 export const TIME_LABEL = labelMap(TIMES);
 
 /** Which category each option belongs to. */

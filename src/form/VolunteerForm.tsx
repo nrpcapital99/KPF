@@ -7,12 +7,14 @@ import {
   FOUNDATION,
   HELP_CATEGORIES,
   LIMITS,
+  OTHER_CONTRIBUTION_ID,
   TIMES,
   type HelpOption,
 } from "../config";
 import {
   EMPTY_VALUES,
   FIELD_ORDER,
+  firstIncompleteArea,
   toInput,
   validate,
   type FieldName,
@@ -25,6 +27,12 @@ let submitModule: Promise<SubmitModule> | null = null;
 const loadSubmit = () => (submitModule ??= import("./submit"));
 
 type Phase = "editing" | "sending" | "sent";
+
+/** Step one of "How would you like to help?": the areas themselves. */
+const AREA_OPTIONS: HelpOption[] = [
+  ...HELP_CATEGORIES.map(({ id, label }) => ({ id, label })),
+  { id: OTHER_CONTRIBUTION_ID, label: "Other ways to contribute" },
+];
 
 export default function VolunteerForm() {
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES);
@@ -64,6 +72,38 @@ export default function VolunteerForm() {
 
   const blur = (field: FieldName) => () =>
     setTouched((current) => ({ ...current, [field]: true }));
+
+  function toggleArea(areaId: string) {
+    setValues((current) => {
+      if (!current.helpAreas.includes(areaId)) {
+        return { ...current, helpAreas: [...current.helpAreas, areaId] };
+      }
+      // Removing an area also removes everything chosen inside it, so what's
+      // sent always matches what's on screen.
+      const next = { ...current, helpAreas: current.helpAreas.filter((a) => a !== areaId) };
+      const category = HELP_CATEGORIES.find((c) => c.id === areaId);
+      if (category) {
+        next.helpWith = current.helpWith.filter(
+          (id) => !category.options.some((option) => option.id === id),
+        );
+        if (category.specifics) next[category.specifics.field] = "";
+      }
+      if (areaId === OTHER_CONTRIBUTION_ID) next.otherContribution = "";
+      return next;
+    });
+    if (sendError) setSendError(null);
+  }
+
+  function clearAreas() {
+    setValues((current) => ({
+      ...current,
+      helpAreas: [],
+      helpWith: [],
+      digitalSpecifics: "",
+      techSpecifics: "",
+      otherContribution: "",
+    }));
+  }
 
   function toggle(key: "helpWith" | "preferredTimes", id: string) {
     setValues((current) => {
@@ -125,6 +165,8 @@ export default function VolunteerForm() {
 
   const sending = phase === "sending";
   const messageLength = values.message.trim().length;
+  const chosenCategories = HELP_CATEGORIES.filter((c) => values.helpAreas.includes(c.id));
+  const incompleteAreaId = firstIncompleteArea(values)?.id;
 
   return (
     <div className="fp">
@@ -319,99 +361,128 @@ export default function VolunteerForm() {
                     </span>
                   </span>
                 </legend>
-                <p className="fp__section-hint">Pick as many as you like.</p>
+                <p className="fp__section-hint">
+                  Choose your area first, then pick what you can do in it.
+                </p>
 
-                <div
-                  className={`help-dd${showError("helpWith") ? " help-dd--error" : ""}`}
-                  aria-describedby={showError("helpWith") ? "f-helpWith-error" : undefined}
-                >
-                  {HELP_CATEGORIES.map((category, index) => {
-                    const specifics = category.specifics;
-                    const picked = category.options.some((o) => values.helpWith.includes(o.id));
-                    return (
-                      <div key={category.id} className="help-dd__item">
-                        <MultiSelectDropdown
-                          id={index === 0 ? "f-helpWith" : undefined}
-                          label={category.label}
-                          options={category.options}
-                          selected={values.helpWith}
-                          open={openDropdown === category.id}
-                          onOpenChange={(open) => setOpenDropdown(open ? category.id : null)}
-                          onToggle={(id) => toggle("helpWith", id)}
-                          onClear={() =>
-                            set(
-                              "helpWith",
-                              values.helpWith.filter(
-                                (id) => !category.options.some((o) => o.id === id),
-                              ),
-                            )
-                          }
-                        />
-
-                        {/* Shown once something is picked in this area (or text was already typed). */}
-                        {specifics && (picked || values[specifics.field]) && (
-                          <div className="help-dd__specifics">
-                            <Field
-                              id={`f-${specifics.field}`}
-                              label="What can you specifically help with?"
-                              optional
-                              error={showError(specifics.field)}
-                              hint={specifics.hint}
-                              full
-                            >
-                              <textarea
-                                id={`f-${specifics.field}`}
-                                className="textarea help-dd__textarea"
-                                value={values[specifics.field]}
-                                onChange={(e) => set(specifics.field, e.target.value)}
-                                onBlur={blur(specifics.field)}
-                                maxLength={LIMITS.specifics}
-                                rows={2}
-                                {...describedBy(
-                                  `f-${specifics.field}`,
-                                  showError(specifics.field),
-                                  true,
-                                )}
-                              />
-                            </Field>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="fields help-dd__other">
-                  <Field
-                    id="f-otherContribution"
-                    label="Other ways to contribute"
-                    optional
-                    error={showError("otherContribution")}
-                    hint="Anything that doesn't fit the lists above."
-                    full
-                  >
-                    <textarea
-                      id="f-otherContribution"
-                      className="textarea help-dd__textarea"
-                      value={values.otherContribution}
-                      onChange={(e) => set("otherContribution", e.target.value)}
-                      onBlur={blur("otherContribution")}
-                      maxLength={LIMITS.otherContribution}
-                      rows={2}
-                      {...describedBy(
-                        "f-otherContribution",
-                        showError("otherContribution"),
-                        true,
-                      )}
-                    />
-                  </Field>
-                </div>
-
+                <MultiSelectDropdown
+                  id="f-helpWith"
+                  label="Your area(s)"
+                  placeholder="Choose your area"
+                  options={AREA_OPTIONS}
+                  selected={values.helpAreas}
+                  open={openDropdown === "areas"}
+                  onOpenChange={(open) => setOpenDropdown(open ? "areas" : null)}
+                  onToggle={toggleArea}
+                  onClear={clearAreas}
+                  invalid={Boolean(showError("helpWith"))}
+                  describedBy={showError("helpWith") ? "f-helpWith-error" : undefined}
+                />
                 {showError("helpWith") && (
-                  <p id="f-helpWith-error" className="field__error help__error">
+                  <p id="f-helpWith-error" className="field__error help-dd__error">
                     <AlertIcon />
                     {showError("helpWith")}
                   </p>
+                )}
+
+                {chosenCategories.length > 0 && (
+                  <div className="help-dd__options">
+                    <p className="help-dd__step">Now pick what you can do in each area.</p>
+                    <div className="help-dd">
+                      {chosenCategories.map((category) => {
+                        const specifics = category.specifics;
+                        const picked = category.options.some((o) => values.helpWith.includes(o.id));
+                        const missing = Boolean(showError("helpOptions")) && !picked;
+                        return (
+                          <div key={category.id} className="help-dd__item">
+                            <MultiSelectDropdown
+                              id={category.id === incompleteAreaId ? "f-helpOptions" : undefined}
+                              label={category.label}
+                              placeholder="Choose what you can do"
+                              options={category.options}
+                              selected={values.helpWith}
+                              open={openDropdown === category.id}
+                              onOpenChange={(open) => setOpenDropdown(open ? category.id : null)}
+                              onToggle={(id) => toggle("helpWith", id)}
+                              onClear={() =>
+                                set(
+                                  "helpWith",
+                                  values.helpWith.filter(
+                                    (id) => !category.options.some((o) => o.id === id),
+                                  ),
+                                )
+                              }
+                              invalid={missing}
+                              describedBy={missing ? "f-helpOptions-error" : undefined}
+                            />
+
+                            {/* Shown once something is picked in this area. */}
+                            {specifics && picked && (
+                              <div className="help-dd__specifics">
+                                <Field
+                                  id={`f-${specifics.field}`}
+                                  label="What can you specifically help with?"
+                                  optional
+                                  error={showError(specifics.field)}
+                                  hint={specifics.hint}
+                                  full
+                                >
+                                  <textarea
+                                    id={`f-${specifics.field}`}
+                                    className="textarea help-dd__textarea"
+                                    value={values[specifics.field]}
+                                    onChange={(e) => set(specifics.field, e.target.value)}
+                                    onBlur={blur(specifics.field)}
+                                    maxLength={LIMITS.specifics}
+                                    rows={2}
+                                    {...describedBy(
+                                      `f-${specifics.field}`,
+                                      showError(specifics.field),
+                                      true,
+                                    )}
+                                  />
+                                </Field>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {showError("helpOptions") && (
+                      <p id="f-helpOptions-error" className="field__error help-dd__error">
+                        <AlertIcon />
+                        {showError("helpOptions")}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {values.helpAreas.includes(OTHER_CONTRIBUTION_ID) && (
+                  <div className="fields help-dd__other">
+                    <Field
+                      id="f-otherContribution"
+                      label="Other ways to contribute"
+                      required
+                      error={showError("otherContribution")}
+                      hint="Tell us how else you'd like to help."
+                      full
+                    >
+                      <textarea
+                        id="f-otherContribution"
+                        className="textarea help-dd__textarea"
+                        value={values.otherContribution}
+                        onChange={(e) => set("otherContribution", e.target.value)}
+                        onBlur={blur("otherContribution")}
+                        maxLength={LIMITS.otherContribution}
+                        rows={2}
+                        {...describedBy(
+                          "f-otherContribution",
+                          showError("otherContribution"),
+                          true,
+                        )}
+                      />
+                    </Field>
+                  </div>
                 )}
               </fieldset>
 
@@ -456,7 +527,7 @@ export default function VolunteerForm() {
                   <span className="fp__legend-num" aria-hidden>
                     4
                   </span>
-                  Anything more about you?
+                  Any more information?
                 </legend>
                 <p className="fp__section-hint">
                   Optional. Your experience, the languages you speak, or why you'd like to
@@ -466,7 +537,7 @@ export default function VolunteerForm() {
                 <div className="fields">
                   <Field
                     id="f-message"
-                    label="Anything more about you"
+                    label="Any more information"
                     hideLabel
                     error={showError("message")}
                     hint={`${messageLength} / ${LIMITS.message}`}
@@ -638,6 +709,9 @@ function MultiSelectDropdown({
   onOpenChange,
   onToggle,
   onClear,
+  placeholder,
+  invalid = false,
+  describedBy,
 }: {
   id?: string;
   label: string;
@@ -647,6 +721,9 @@ function MultiSelectDropdown({
   onOpenChange: (open: boolean) => void;
   onToggle: (optionId: string) => void;
   onClear: () => void;
+  placeholder: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -679,7 +756,7 @@ function MultiSelectDropdown({
   return (
     <div
       ref={rootRef}
-      className={`dd${open ? " dd--open" : ""}${chosen.length ? " dd--filled" : ""}`}
+      className={`dd${open ? " dd--open" : ""}${chosen.length ? " dd--filled" : ""}${invalid ? " dd--invalid" : ""}`}
     >
       <span id={labelId} className="label dd__label">
         {label}
@@ -692,10 +769,12 @@ function MultiSelectDropdown({
         aria-expanded={open}
         aria-controls={panelId}
         aria-labelledby={`${labelId} ${valueId}`}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         onClick={() => onOpenChange(!open)}
       >
         <span id={valueId} className="dd__value">
-          {chosen.length ? chosen.map((option) => option.label).join(", ") : "Choose any that apply"}
+          {chosen.length ? chosen.map((option) => option.label).join(", ") : placeholder}
         </span>
         {chosen.length > 0 && (
           <span className="dd__count" aria-hidden>

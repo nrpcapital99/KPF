@@ -50,7 +50,7 @@ service cloud.firestore {
     }
 
     function commitmentIds() {
-      return ['month', 'w1_3', 'w4_8', 'w8_plus'];
+      return ['w1_2', 'w3_4'];
     }
 
     function timeIds() {

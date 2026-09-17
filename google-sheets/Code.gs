@@ -1,7 +1,7 @@
 /**
  * Kanak Parakh Foundation — volunteer responses → this Google Sheet
  * =================================================================
- * VERSION 4   (the Kanak Parakh menu shows "Script version 4")
+ * VERSION 5   (the Kanak Parakh menu shows "Script version 5")
  *
  * Copies volunteer responses from the app's Firestore database into a tab
  * called "Volunteers". Set-up takes about five minutes: see
@@ -22,7 +22,7 @@
  *   they're left alone and stay with the right person even if you sort.
  */
 
-var SCRIPT_VERSION = '4';
+var SCRIPT_VERSION = '5';
 
 var CONFIG = {
   PROJECT_ID: 'kp-foundation-db18a',
@@ -97,6 +97,12 @@ var HELP_CATEGORIES = [
 ];
 
 var COMMITMENT_LABEL = {
+  w1_2: '1 to 2 hrs a week',
+  w3_4: '3 to 4 hrs a week',
+};
+
+/** Time options from earlier versions of the form, so old responses stay readable. */
+var LEGACY_COMMITMENT_LABEL = {
   month: 'A few hours a month',
   w1_3: '1–3 hrs a week',
   w4_8: '4–8 hrs a week',
@@ -235,7 +241,9 @@ function columns_() {
       }
       return text_(parts.join('\n'));
     } },
-    { header: 'Time they can give', width: 150, get: function (r) { return COMMITMENT_LABEL[r.commitment] || ''; } },
+    { header: 'Time they can give', width: 150, get: function (r) {
+      return COMMITMENT_LABEL[r.commitment] || LEGACY_COMMITMENT_LABEL[r.commitment] || r.commitment || '';
+    } },
     { header: "When they're free", width: 170, get: function (r) {
       return (r.preferredTimes || []).map(function (id) { return TIME_LABEL[id] || id; }).join(', ');
     } },

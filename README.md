@@ -13,10 +13,11 @@ There is no backend server. It's a React front end talking directly to
 ## What's in it
 
 **The form (`/`)**: anyone can fill it in, no account needed.
-Name, phone/WhatsApp, email and city; **how they'd like to help**: a dropdown
-for each of seven areas (Teaching & Education, Website & Technology, ...) where
-people tick everything that applies, plus a box for other ways to contribute;
-time they can give; when they're free; and anything more about them.
+Name, phone/WhatsApp, email and city; **how they'd like to help**: people
+first choose their area(s) (Teaching & Education, Website & Technology, ...,
+or Other ways to contribute), then a dropdown appears for each chosen area to
+tick what they can do; time they can give (1 to 2 or 3 to 4 hrs a week); when
+they're free; and any more information.
 Validation is inline and friendly, and a hidden honeypot field quietly
 swallows bot submissions.
 

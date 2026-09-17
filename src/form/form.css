@@ -287,8 +287,28 @@
   min-height: 80px;
 }
 
+.help-dd__options,
 .help-dd__other {
-  margin-top: 20px;
+  margin-top: 22px;
+}
+
+.help-dd__options {
+  padding: 18px;
+  border: 1px solid var(--gold-200);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--gold-50), var(--surface) 80%);
+  animation: dd-open 0.18s var(--ease);
+}
+
+.help-dd__step {
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gold-600);
+}
+
+.help-dd__error {
+  margin-top: 10px;
 }
 
 .help-dd .fp__counter,
@@ -299,6 +319,9 @@
 .dd {
   position: relative;
   display: grid;
+  /* minmax(0, …) lets a long summary ("Digital Marketing & Social Media,
+     Website & Technology") shrink and end in "…" instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 7px;
   min-width: 0;
 }
@@ -372,8 +395,8 @@
   transform: rotate(180deg);
 }
 
-.help-dd--error .dd:not(.dd--filled) .dd__trigger {
-  border-color: #e3a7b5;
+.dd--invalid .dd__trigger {
+  border-color: var(--red);
 }
 
 .dd__panel {
