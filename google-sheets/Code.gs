@@ -1,6 +1,7 @@
 /**
  * Kanak Parakh Foundation — volunteer responses → this Google Sheet
  * =================================================================
+ * VERSION 3   (the Kanak Parakh menu shows "Script version 3")
  *
  * Copies volunteer responses from the app's Firestore database into a tab
  * called "Volunteers". Set-up takes about five minutes: see
@@ -20,6 +21,8 @@
  *   instead. You can add your own columns to the RIGHT of "Response ID";
  *   they're left alone and stay with the right person even if you sort.
  */
+
+var SCRIPT_VERSION = '3';
 
 var CONFIG = {
   PROJECT_ID: 'kp-foundation-db18a',
@@ -216,7 +219,14 @@ function onOpen() {
     .addSeparator()
     .addItem('Turn on automatic sync', 'turnOnAutomaticSync')
     .addItem('Turn off automatic sync', 'turnOffAutomaticSync')
+    .addSeparator()
+    .addItem('Script version ' + SCRIPT_VERSION, 'showVersion')
     .addToUi();
+}
+
+function showVersion() {
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('Kanak Parakh sync — script version ' + SCRIPT_VERSION, 'Running as: ' + runningAs_(), ui.ButtonSet.OK);
 }
 
 function turnOnAutomaticSync() {
@@ -654,7 +664,7 @@ function explain_(error) {
     advice = "Something unexpected went wrong talking to the database.";
   }
 
-  return advice + '\n\n———\nRunning as: ' + account +
+  return advice + '\n\n———\nScript version: ' + SCRIPT_VERSION + '\nRunning as: ' + account +
     '\nDetails: ' + [status, error && error.googleStatus, reason].filter(Boolean).join(' · ') +
     '\n' + String(google).slice(0, 300);
 }
