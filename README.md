@@ -1,107 +1,94 @@
-# Kanak Parakh Foundation
+# Kanak Parakh Foundation — Volunteer form
 
-A role-based volunteer operations app for the Kanak Parakh Foundation. It uses
-React, TypeScript, Firebase Authentication, and Cloud Firestore.
+A public volunteer registration form, and a private page where the team sees
+responses as they arrive.
 
-## What is included
+- **Live:** https://kp-foundation-db18a.web.app
+- **Team page:** https://kp-foundation-db18a.web.app/admin
 
-- First-run setup for the initial administrator
-- Email/password sign-in with Firebase Authentication
-- Public volunteer applications and admin approval
-- Admin/coordinator slot creation and signup review
-- Volunteer opportunity discovery, requests, withdrawals, and commitments
-- Participant directory with search and filters
-- Editable profiles, project teams, and a shared resource library
-- Responsive desktop and mobile navigation
-- Realtime Firestore listeners and role-based Firestore Security Rules
-- Firebase Hosting single-page-app configuration
+There is no backend server. It's a React front end talking directly to
+**Cloud Firestore**. Who can read and write what is enforced by
+[`firestore.rules`](firestore.rules), not by the app.
 
-## Run locally
+## What's in it
 
-The supplied Firebase web configuration is stored in the ignored `.env.local`.
-For another Firebase project, copy `.env.example` to `.env.local` and replace
-the values.
+**The form (`/`)**: anyone can fill it in, no account needed.
+Name, phone/WhatsApp, email, city, how they'd like to help, time they can
+give, when they're free, and a free-text note. Validation is inline and
+friendly, and a hidden honeypot field quietly swallows bot submissions.
+
+**The team page (`/admin`)**: sign in with a team account to:
+
+- see responses live, newest first, with no refresh needed
+- search, and filter by status or area of interest
+- call, WhatsApp or email someone in one tap
+- move a response through *New → Contacted → Joined → Archived*
+- add private team notes
+- export what you're looking at to CSV (opens correctly in Excel)
+- delete spam
+
+Both pages adapt to phones, tablets and desktops in either orientation.
+
+## Running it locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Production checks:
+Opens on http://localhost:5173. It uses the live Firebase project from `.env`,
+so anything submitted locally is real.
+
+## Deploying
 
 ```bash
-npm run build
-npm run lint
+firebase deploy --only firestore:rules,hosting
 ```
 
-## Firebase project setup
+`hosting` builds first automatically. Deploy the rules and the site together.
+They depend on each other.
 
-Before the app can create its first administrator:
+## Adding a team member
 
-1. In the Firebase console, create a **Cloud Firestore** database in production
-   mode. Choose the database region deliberately; it cannot be changed later.
-2. Under Authentication > Sign-in method, enable **Email/Password**.
-3. Install or run the Firebase CLI and deploy the rules and indexes:
+1. Firebase console → **Authentication** → **Add user** (email + password),
+   unless they already have an account.
+2. Copy their **User UID**.
+3. Firebase console → **Firestore Database** → collection **`admins`** →
+   **Add document**. Use the UID as the **Document ID**. Any field is fine,
+   e.g. `name: "Priya"`.
 
-   ```bash
-   npx firebase-tools login
-   npx firebase-tools deploy --only firestore:rules,firestore:indexes
-   ```
+They can now sign in at `/admin`. To remove someone, delete their `admins`
+document.
 
-4. Start the app and complete the one-time administrator setup screen. The
-   bootstrap transaction creates `config/foundation` and the first admin
-   participant atomically.
+If a signed-in account isn't a team member, the team page says so and shows
+the account's UID with a copy button, so step 3 is easy.
 
-The `.firebaserc` file points at `kp-foundation-db18a`. Change its default
-project before deploying if you use a different Firebase project.
+## Changing the form's options
 
-## Local Firebase emulators
+The choices for *how you'd like to help*, *time you can give* and *when you're
+free* live in [`src/config.ts`](src/config.ts). **The same IDs are listed in
+`firestore.rules`**, which rejects any value not on its list. Change both,
+then redeploy both, or submissions using a new option will be refused.
 
-Set `VITE_USE_FIREBASE_EMULATORS=true` in `.env.local`, then run:
+## Project layout
 
-```bash
-npx firebase-tools emulators:start --only auth,firestore
-npm run dev
+```
+src/
+  form/        the public form: page, validation, submit (Firestore Lite)
+  admin/       the team page: sign in, responses, cards, CSV export
+  components/  brand mark and icons
+  styles/      design tokens and shared styles
+  config.ts    form options, limits, foundation name
+firestore.rules
+firebase.json  hosting: SPA rewrites, caching, security headers
 ```
 
-The app connects to Auth on port 9099 and Firestore on port 8080 when that flag
-is enabled.
+## Performance notes
 
-## Firestore model
-
-The app uses these top-level collections:
-
-- `config` — one-time foundation bootstrap state
-- `participants` — approved members and their embedded expertise
-- `accountRequests` — volunteer applications keyed by Firebase UID
-- `slots` — volunteering opportunities
-- `signups` — volunteer requests and attendance outcomes
-- `projects` — projects with embedded member IDs
-
-Approved account requests become participant documents whose document ID is the
-same Firebase UID. That makes self-service profile and signup rules simple and
-auditable. Small related values are embedded where appropriate, while signups
-remain separate because they have their own approval lifecycle.
-
-## Security
-
-`firestore.rules` denies access by default. It grants:
-
-- public read access only to the bootstrap configuration document;
-- request creation/read access to the matching Firebase UID;
-- directory and operational reads to active participants;
-- slot, project, resource, and approval writes to staff;
-- role/status administration to admins;
-- limited self-profile edits and signup withdrawals to the record owner.
-
-Rules must be deployed before the browser app can use Firestore.
-
-## Deploy the web app
-
-```bash
-npm run build
-npx firebase-tools deploy --only hosting
-```
-
-Firebase Hosting serves `dist/` and rewrites unknown routes to `index.html` for
-React Router.
+- A volunteer on a phone downloads about **75 kB** (gzipped) to see the form.
+  The database code loads quietly in the background, and the sign-in and
+  team-page code is never downloaded by volunteers.
+- Hashed assets are cached for a year; the page itself is never cached, so a
+  deploy reaches everyone immediately. In `firebase.json` the broad `**`
+  header rule must stay **before** the `/assets/**` one. Firebase applies the
+  last match, and reversing them silently disables asset caching.

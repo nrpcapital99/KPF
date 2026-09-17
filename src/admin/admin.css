@@ -755,3 +755,37 @@
     margin-bottom: 16px;
   }
 }
+
+/* --- "Not on the team" help ----------------------------------------------- */
+.ad__steps {
+  display: grid;
+  gap: 10px;
+  max-width: 520px;
+  margin: 4px 0 14px;
+  padding-left: 22px;
+  text-align: left;
+  color: var(--ink-2);
+}
+
+.ad__uid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ad__uid code {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.ad__uid .btn {
+  min-height: 38px;
+}

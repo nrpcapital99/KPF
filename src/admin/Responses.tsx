@@ -81,15 +81,17 @@ export default function Responses({ user }: { user: User }) {
     setInterest("ALL");
   }
 
-  async function copyFormLink() {
-    const link = `${window.location.origin}/`;
+  async function copyText(text: string, success: string) {
     try {
-      await navigator.clipboard.writeText(link);
-      setToast({ kind: "ok", text: "Form link copied — paste it anywhere to share." });
+      await navigator.clipboard.writeText(text);
+      setToast({ kind: "ok", text: success });
     } catch {
-      setToast({ kind: "error", text: `Couldn't copy. The link is ${link}` });
+      setToast({ kind: "error", text: `Couldn't copy automatically: ${text}` });
     }
   }
+
+  const copyFormLink = () =>
+    copyText(`${window.location.origin}/`, "Form link copied — paste it anywhere to share.");
 
   return (
     <div className="ad">
@@ -137,13 +139,33 @@ export default function Responses({ user }: { user: User }) {
         {state.kind === "denied" ? (
           <div className="ad__state">
             <AlertIcon />
-            <h2>This account can't view responses</h2>
+            <h2>This account isn't on the team yet</h2>
             <p>
-              {user.email} is signed in but isn't on the team list. Ask a foundation
-              administrator to add you, then sign in again.
+              You're signed in as <strong>{user.email}</strong>, but this account hasn't
+              been added as a team member, so it can't see responses.
             </p>
-            <button type="button" className="btn btn--ghost" onClick={() => void signOut()}>
-              Sign out
+            <ol className="ad__steps">
+              <li>
+                Open the Firebase console → <strong>Firestore Database</strong>.
+              </li>
+              <li>
+                In the <strong>admins</strong> collection, add a document whose ID is this
+                account's ID:
+                <span className="ad__uid">
+                  <code>{user.uid}</code>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => void copyText(user.uid, "Account ID copied.")}
+                  >
+                    Copy
+                  </button>
+                </span>
+              </li>
+              <li>Reload this page.</li>
+            </ol>
+            <button type="button" className="btn btn--quiet" onClick={() => void signOut()}>
+              Sign in with a different account
             </button>
           </div>
         ) : state.kind === "error" ? (
