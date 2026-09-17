@@ -78,10 +78,19 @@ numbers and emails. Share it the way you'd share the team page.
 
 ## If something goes wrong
 
-**"This Google account can't read the Firebase project"**: you set it up
-with a different Google account. Either redo step 5 signed in as the project
-owner, or give your account the *Cloud Datastore Viewer* role in
-[Google Cloud IAM](https://console.cloud.google.com/iam-admin/iam?project=kp-foundation-db18a).
+Start with **Kanak Parakh → Check connection**. It shows which Google account
+the script is running as, whether Google granted it permission to read the
+database, and, if it can't, the exact reason and what to do. The last lines
+("Details: …") are what to send if you need help.
+
+**"Google hasn't given this script permission to read the database"**: the
+permissions file wasn't saved before you clicked Allow. Redo step 4, press
+`Ctrl+S`, then run **Check connection** and click **Allow**.
+
+**"The script is running as someone@… and that account doesn't have access"**:
+you're signed in to more than one Google account and the Sheet used the wrong
+one. Open the Sheet in a browser window signed in *only* to the account that
+owns the Firebase project (an Incognito/private window works), and repeat step 5.
 
 **The Kanak Parakh menu doesn't appear**: reload the Sheet, and wait a few
 seconds after it loads.

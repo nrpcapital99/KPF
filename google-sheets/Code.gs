@@ -23,6 +23,7 @@
 
 var CONFIG = {
   PROJECT_ID: 'kp-foundation-db18a',
+  PROJECT_NUMBER: '168041609619',
   COLLECTION: 'volunteers',
   SHEET_NAME: 'Volunteers',
   SYNC_EVERY_MINUTES: 5,
@@ -210,6 +211,8 @@ function onOpen() {
     .createMenu('Kanak Parakh')
     .addItem('Sync now', 'menuSyncNow')
     .addItem('Full resync', 'menuFullResync')
+    .addSeparator()
+    .addItem('Check connection', 'checkConnection')
     .addSeparator()
     .addItem('Turn on automatic sync', 'turnOnAutomaticSync')
     .addItem('Turn off automatic sync', 'turnOffAutomaticSync')
@@ -496,30 +499,76 @@ function changedSince_(since) {
   return out;
 }
 
+/**
+ * Calls Firestore as the person who owns this Sheet.
+ *
+ * Google can attribute the request to either the Firebase project (via the
+ * X-Goog-User-Project header) or to Apps Script's own hidden Cloud project.
+ * Which one works depends on the account, so try one and fall back to the
+ * other only for that specific kind of error, then remember what worked.
+ */
 function firestore_(method, path, payload) {
+  var props = PropertiesService.getScriptProperties();
+  var preferred = props.getProperty('quotaProjectHeader');
+  var attempts = preferred === 'off' ? [false, true] : [true, false];
+  var lastError = null;
+
+  for (var i = 0; i < attempts.length; i++) {
+    try {
+      var body = firestoreRequest_(method, path, payload, attempts[i]);
+      var worked = attempts[i] ? 'on' : 'off';
+      if (preferred !== worked) props.setProperty('quotaProjectHeader', worked);
+      return body;
+    } catch (error) {
+      lastError = error;
+      if (!isProjectAttributionError_(error)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+function firestoreRequest_(method, path, payload, useQuotaProject) {
   var url = 'https://firestore.googleapis.com/v1/projects/' + CONFIG.PROJECT_ID +
     '/databases/(default)/documents' + path;
+  var headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  if (useQuotaProject) headers['X-Goog-User-Project'] = CONFIG.PROJECT_ID;
+
   var options = {
     method: method,
     contentType: 'application/json',
     muteHttpExceptions: true,
-    headers: {
-      Authorization: 'Bearer ' + ScriptApp.getOAuthToken(),
-      // Bill the request to the Firebase project rather than Apps Script's own.
-      'X-Goog-User-Project': CONFIG.PROJECT_ID,
-    },
+    headers: headers,
   };
   if (payload) options.payload = JSON.stringify(payload);
 
   var response = UrlFetchApp.fetch(url, options);
   var code = response.getResponseCode();
   var text = response.getContentText();
-  if (code >= 300) {
-    var error = new Error('Firestore ' + code + ': ' + text);
-    error.status = code;
-    throw error;
-  }
+  if (code >= 300) throw googleError_(code, text);
   return JSON.parse(text);
+}
+
+/** Turns a Google API error response into an Error carrying its reason. */
+function googleError_(code, text) {
+  var parsed = {};
+  try {
+    parsed = JSON.parse(text).error || {};
+  } catch (ignored) {
+    parsed = { message: text };
+  }
+  var info = (parsed.details || []).filter(function (d) { return d && d.reason; })[0] || {};
+  var error = new Error('Firestore ' + code + ' ' + (parsed.status || '') + ': ' + (parsed.message || text));
+  error.status = code;
+  error.googleStatus = parsed.status || '';
+  error.reason = info.reason || '';
+  error.consumer = (info.metadata && info.metadata.consumer) || '';
+  error.googleMessage = parsed.message || text;
+  return error;
+}
+
+function isProjectAttributionError_(error) {
+  return /^(USER_PROJECT_DENIED|SERVICE_DISABLED|CONSUMER_INVALID|BILLING_DISABLED)$/.test(error.reason || '') ||
+    /serviceusage|has not been used in project|user project/i.test(error.googleMessage || '');
 }
 
 function toRecord_(doc) {
@@ -570,15 +619,89 @@ function objectValues_(obj) {
 
 /** Turns API errors into something a person can act on. */
 function explain_(error) {
+  var account = runningAs_();
+  var reason = (error && error.reason) || '';
   var status = error && error.status;
-  var message = String((error && error.message) || error);
-  if (status === 401 || status === 403 || /PERMISSION_DENIED/.test(message)) {
-    return 'This Google account can\'t read the Firebase project "' + CONFIG.PROJECT_ID + '".\n\n' +
-      'Open this Sheet while signed in to the Google account that owns the Firebase project, ' +
-      'or ask the owner to give your account the "Cloud Datastore Viewer" role in Google Cloud IAM.';
+  var google = (error && error.googleMessage) || String((error && error.message) || error);
+  var advice;
+
+  if (reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' || /insufficient authentication scopes/i.test(google)) {
+    advice =
+      "Google hasn't given this script permission to read the database yet. That usually means the " +
+      'permissions file (appsscript.json) wasn\'t saved before you clicked Allow.\n\n' +
+      'Fix: in Apps Script, open appsscript.json, check it matches the one in the setup guide, press Ctrl+S. ' +
+      'Then here, choose Kanak Parakh → Check connection and click Allow when Google asks.';
+  } else if (status === 401 || error.googleStatus === 'UNAUTHENTICATED') {
+    advice =
+      "Google sign-in for this script didn't complete.\n\n" +
+      'Fix: choose Kanak Parakh → Check connection and click Allow when Google asks.';
+  } else if (reason === 'SERVICE_DISABLED' || reason === 'CONSUMER_INVALID' ||
+             /has not been used in project/i.test(google)) {
+    advice =
+      'Google is counting this request against Apps Script\'s own hidden project instead of your ' +
+      'Firebase project.\n\n' +
+      'Fix: in Apps Script, click ⚙️ Project Settings → Google Cloud Platform (GCP) Project → Change project, ' +
+      'enter the project number ' + CONFIG.PROJECT_NUMBER + ', and follow the prompts. Then run ' +
+      'Kanak Parakh → Check connection again.';
+  } else if (status === 403) {
+    advice =
+      'The script is running as ' + account + ', and that Google account doesn\'t have access to the ' +
+      'Firebase project "' + CONFIG.PROJECT_ID + '".\n\n' +
+      'Fix: open this Sheet in a browser profile signed in ONLY to the Google account that owns the ' +
+      'Firebase project, set it up again from that account, or give ' + account +
+      ' the "Cloud Datastore Viewer" role in Google Cloud IAM.';
+  } else {
+    advice = "Something unexpected went wrong talking to the database.";
   }
-  if (/SERVICE_DISABLED|has not been used/.test(message)) {
-    return 'The Firestore API isn\'t enabled for this request.\n\n' + message;
+
+  return advice + '\n\n———\nRunning as: ' + account +
+    '\nDetails: ' + [status, error && error.googleStatus, reason].filter(Boolean).join(' · ') +
+    '\n' + String(google).slice(0, 300);
+}
+
+/** The Google account this script is running as. */
+function runningAs_() {
+  try {
+    return Session.getEffectiveUser().getEmail() || 'an unknown account';
+  } catch (ignored) {
+    return 'an unknown account';
   }
-  return message;
+}
+
+/** Which permissions Google actually granted this script (from its access token). */
+function grantedScopes_() {
+  var response = UrlFetchApp.fetch(
+    'https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(ScriptApp.getOAuthToken()),
+    { muteHttpExceptions: true }
+  );
+  if (response.getResponseCode() !== 200) return null;
+  return String(JSON.parse(response.getContentText()).scope || '').split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Menu: Kanak Parakh → Check connection.
+ * Reads one response to prove access, and reports exactly what's wrong if it can't.
+ */
+function checkConnection() {
+  var ui = SpreadsheetApp.getUi();
+  var lines = ['Running as: ' + runningAs_()];
+
+  var scopes = grantedScopes_();
+  if (scopes) {
+    var canRead = scopes.some(function (s) { return /\/auth\/(datastore|cloud-platform)$/.test(s); });
+    lines.push('Permission to read the database: ' + (canRead ? 'granted' : 'NOT granted'));
+  }
+
+  try {
+    firestore_('get', '/' + CONFIG.COLLECTION + '?pageSize=1');
+    lines.push('Reading volunteer responses: working');
+    ui.alert(
+      'Connection OK',
+      lines.join('\n') + '\n\nEverything is set up. Choose Kanak Parakh → Turn on automatic sync.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    lines.push('Reading volunteer responses: failed');
+    ui.alert('Connection problem', lines.join('\n') + '\n\n' + explain_(error), ui.ButtonSet.OK);
+  }
 }
