@@ -100,7 +100,7 @@ export function validate(values: FormValues): FieldErrors {
 
   if (values.helpWith.length === 0 && !values.otherContribution.trim()) {
     errors.helpWith =
-      "Please choose at least one way you'd like to help, or describe it under Other Ways to Contribute.";
+      "Please choose at least one way you'd like to help, or write something under Other ways to contribute.";
   }
 
   if (values.digitalSpecifics.trim().length > LIMITS.specifics) {
