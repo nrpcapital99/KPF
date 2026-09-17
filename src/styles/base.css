@@ -1,0 +1,500 @@
+@import "./tokens.css";
+
+/* --- Reset ---------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Brand ---------------------------------------------------------------- */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand__mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  color: var(--gold);
+}
+
+.brand__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.brand__sub {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.34em;
+  color: var(--gold);
+}
+
+.brand--sm .brand__mark {
+  width: 24px;
+  height: 24px;
+}
+
+.brand--sm .brand__name {
+  font-size: 0.86rem;
+}
+
+.brand--sm .brand__sub {
+  font-size: 0.56rem;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+
+.btn--primary {
+  background: var(--navy);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(15, 30, 61, 0.2);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--navy-700);
+}
+
+.btn--ghost {
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--cream);
+}
+
+.btn--quiet {
+  background: transparent;
+  color: var(--ink-2);
+}
+
+.btn--quiet:hover:not(:disabled) {
+  background: var(--cream-2);
+  color: var(--ink);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--red);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--red-bg);
+}
+
+.btn--lg {
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: var(--r-lg);
+  font-size: 1.02rem;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--icon {
+  width: var(--tap);
+  padding: 0;
+}
+
+/* --- Form fields ---------------------------------------------------------- */
+.fields {
+  display: grid;
+  gap: 18px 16px;
+  /* One column on narrow cards, two once there's room — no breakpoint needed,
+     so it adapts to portrait, landscape and split-screen alike. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.req {
+  margin-left: 3px;
+  color: var(--gold-600);
+}
+
+.optional {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--r-md);
+  background-color: var(--surface);
+  /* 16px stops iOS Safari zooming the page when a field is focused. */
+  font-size: 16px;
+  color: var(--ink);
+  appearance: none;
+  transition:
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #9aa2b3;
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover {
+  border-color: #c3b8a5;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 4px rgba(15, 30, 61, 0.1);
+}
+
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.input[aria-invalid="true"]:focus,
+.textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 4px rgba(166, 61, 83, 0.14);
+}
+
+.textarea {
+  min-height: 120px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.select {
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23737D92' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 18px;
+}
+
+.field__hint,
+.field__error {
+  font-size: var(--step--1);
+  line-height: 1.4;
+}
+
+.field__hint {
+  color: var(--ink-3);
+}
+
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--red);
+}
+
+.field__error svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 1px;
+}
+
+/* --- Chips (checkbox / radio styled as pills) ----------------------------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.chip input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.chip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--tap);
+  padding: 9px 16px;
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink-2);
+  user-select: none;
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.chip span svg {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.chip:hover span {
+  border-color: var(--navy-600);
+  color: var(--ink);
+}
+
+.chip input:checked + span {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+
+.chip input:checked + span svg {
+  display: block;
+}
+
+.chip input:focus-visible + span {
+  box-shadow: 0 0 0 4px rgba(196, 160, 82, 0.5);
+}
+
+/* --- Notices -------------------------------------------------------------- */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.notice svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 1px;
+}
+
+.notice--error {
+  background: var(--red-bg);
+  border-color: #f1cdd6;
+  color: var(--red);
+}
+
+.notice--ok {
+  background: var(--green-bg);
+  border-color: #c7e3d2;
+  color: var(--green);
+}
+
+.notice--info {
+  background: var(--blue-bg);
+  border-color: #d3e1f3;
+  color: var(--blue);
+}
+
+/* --- Spinner -------------------------------------------------------------- */
+.spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.page-loading {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  color: var(--navy);
+}
+
+.page-loading .spinner {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

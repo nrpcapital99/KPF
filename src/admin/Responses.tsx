@@ -1,0 +1,292 @@
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "firebase/auth";
+import Brand from "../components/Brand";
+import {
+  AlertIcon,
+  ArrowUpRightIcon,
+  CheckIcon,
+  DownloadIcon,
+  InboxIcon,
+  LinkIcon,
+  LogOutIcon,
+  SearchIcon,
+} from "../components/icons";
+import { INTEREST_LABEL, INTERESTS, STATUSES } from "../config";
+import type { Volunteer, VolunteerStatus } from "../types";
+import ResponseCard from "./ResponseCard";
+import { downloadCsv } from "./csv";
+import { signOut, useResponses } from "./data";
+
+type StatusFilter = "ALL" | VolunteerStatus;
+type Toast = { kind: "ok" | "error"; text: string } | null;
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const NO_ROWS: Volunteer[] = [];
+
+export default function Responses({ user }: { user: User }) {
+  const state = useResponses(true);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("ALL");
+  const [interest, setInterest] = useState("ALL");
+  const [toast, setToast] = useState<Toast>(null);
+  // "Last 7 days" is measured from when the page was opened.
+  const [openedAt] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const rows = state.kind === "ready" ? state.rows : NO_ROWS;
+
+  const counts = useMemo(() => {
+    const byStatus: Record<string, number> = { ALL: rows.length };
+    for (const s of STATUSES) byStatus[s.id] = 0;
+    for (const row of rows) byStatus[row.status] = (byStatus[row.status] ?? 0) + 1;
+    return byStatus;
+  }, [rows]);
+
+  const thisWeek = useMemo(() => {
+    const cutoff = openedAt - WEEK_MS;
+    return rows.filter((row) => row.createdAt && row.createdAt.getTime() >= cutoff).length;
+  }, [rows, openedAt]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (status !== "ALL" && row.status !== status) return false;
+      if (interest !== "ALL" && !row.interests.includes(interest)) return false;
+      if (!q) return true;
+      return [
+        row.fullName,
+        row.email,
+        row.phone,
+        row.city ?? "",
+        row.message ?? "",
+        row.note ?? "",
+        ...row.interests.map((id) => INTEREST_LABEL[id] ?? id),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [rows, search, status, interest]);
+
+  const filtersActive = search.trim() !== "" || status !== "ALL" || interest !== "ALL";
+
+  function clearFilters() {
+    setSearch("");
+    setStatus("ALL");
+    setInterest("ALL");
+  }
+
+  async function copyFormLink() {
+    const link = `${window.location.origin}/`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setToast({ kind: "ok", text: "Form link copied — paste it anywhere to share." });
+    } catch {
+      setToast({ kind: "error", text: `Couldn't copy. The link is ${link}` });
+    }
+  }
+
+  return (
+    <div className="ad">
+      <header className="ad__bar">
+        <div className="ad__bar-inner">
+          <Brand size="sm" href="/admin" />
+          <div className="ad__bar-actions">
+            <a className="btn btn--quiet" href="/" target="_blank" rel="noopener">
+              <ArrowUpRightIcon />
+              <span className="ad__hide-sm">Open form</span>
+            </a>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => downloadCsv(filtered)}
+              disabled={filtered.length === 0}
+              title={
+                filtersActive
+                  ? "Download the responses matching your filters"
+                  : "Download all responses"
+              }
+            >
+              <DownloadIcon />
+              <span className="ad__hide-sm">Export CSV</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn--quiet btn--icon"
+              onClick={() => void signOut()}
+              aria-label={`Sign out ${user.email ?? ""}`}
+              title={`Signed in as ${user.email ?? "team member"} — sign out`}
+            >
+              <LogOutIcon />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="ad__main">
+        <div className="ad__head">
+          <h1 className="ad__title">Volunteer responses</h1>
+          <p className="ad__subtitle">New submissions appear here automatically.</p>
+        </div>
+
+        {state.kind === "denied" ? (
+          <div className="ad__state">
+            <AlertIcon />
+            <h2>This account can't view responses</h2>
+            <p>
+              {user.email} is signed in but isn't on the team list. Ask a foundation
+              administrator to add you, then sign in again.
+            </p>
+            <button type="button" className="btn btn--ghost" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
+        ) : state.kind === "error" ? (
+          <div className="ad__state">
+            <AlertIcon />
+            <h2>Couldn't load responses</h2>
+            <p>Please check your connection and reload the page.</p>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        ) : (
+          <>
+            <section className="ad__stats" aria-label="Summary">
+              <Stat label="Total responses" value={state.kind === "ready" ? counts.ALL : null} />
+              <Stat label="New — not contacted" value={state.kind === "ready" ? counts.NEW : null} accent />
+              <Stat label="In the last 7 days" value={state.kind === "ready" ? thisWeek : null} />
+            </section>
+
+            <div className="ad__toolbar">
+              <label className="ad__search">
+                <span className="sr-only">Search responses</span>
+                <SearchIcon />
+                <input
+                  className="input"
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search name, phone, email, city…"
+                  enterKeyHint="search"
+                />
+              </label>
+              <label className="ad__filter">
+                <span className="sr-only">Filter by how they'd like to help</span>
+                <select
+                  className="select"
+                  value={interest}
+                  onChange={(e) => setInterest(e.target.value)}
+                >
+                  <option value="ALL">All areas</option>
+                  {INTERESTS.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="ad__tabs" role="group" aria-label="Filter by status">
+              {(["ALL", ...STATUSES.map((s) => s.id)] as StatusFilter[]).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="ad__tab"
+                  aria-pressed={status === id}
+                  onClick={() => setStatus(id)}
+                >
+                  {id === "ALL" ? "All" : STATUSES.find((s) => s.id === id)?.label}
+                  <span className="ad__tab-count">{counts[id] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+
+            {state.kind === "loading" ? (
+              <div className="ad__grid" aria-hidden>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="rc rc--skeleton" />
+                ))}
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="ad__state">
+                <InboxIcon />
+                <h2>No responses yet</h2>
+                <p>When someone fills in the volunteer form, they'll show up here straight away.</p>
+                <button type="button" className="btn btn--primary" onClick={copyFormLink}>
+                  <LinkIcon /> Copy form link
+                </button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="ad__state">
+                <SearchIcon />
+                <h2>Nothing matches</h2>
+                <p>Try a different search, or clear the filters.</p>
+                <button type="button" className="btn btn--ghost" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <>
+                {filtersActive && (
+                  <p className="ad__result-count">
+                    Showing {filtered.length} of {rows.length}
+                    <button type="button" className="ad__clear" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  </p>
+                )}
+                <div className="ad__grid">
+                  {filtered.map((row) => (
+                    <ResponseCard key={row.id} row={row} onToast={setToast} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </main>
+
+      {toast && (
+        <div
+          className={`ad__toast ad__toast--${toast.kind}`}
+          role={toast.kind === "error" ? "alert" : "status"}
+        >
+          {toast.kind === "ok" ? <CheckIcon /> : <AlertIcon />}
+          <span>{toast.text}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | null;
+  accent?: boolean;
+}) {
+  return (
+    <div className={`ad__stat${accent ? " ad__stat--accent" : ""}`}>
+      <p className="ad__stat-label">{label}</p>
+      {value === null ? (
+        <span className="ad__stat-skeleton" aria-hidden />
+      ) : (
+        <p className="ad__stat-value">{value}</p>
+      )}
+    </div>
+  );
+}

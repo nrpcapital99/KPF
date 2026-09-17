@@ -1,91 +1,76 @@
 /* ==========================================================================
    Kanak Parakh Foundation — design tokens
-   Lifted from the approved mockup. Change a value here and it changes
-   everywhere; no component hardcodes a colour.
+   Navy, cream and gold from the brand. Type and spacing scale fluidly with
+   the viewport, so the same values work from a small phone to a wide monitor
+   without a pile of breakpoints.
    ========================================================================== */
 
 :root {
+  color-scheme: light;
+
   /* --- Brand ------------------------------------------------------------ */
-  --navy:            #0F1E3D;
-  --navy-700:        #16294E;
-  --navy-600:        #1E3560;
-  --navy-hover:      #1B2F58;
-  --gold:            #C4A052;
-  --gold-soft:       #E4D3A8;
-  --gold-wash:       #F6EFDF;
+  --navy: #0f1e3d;
+  --navy-800: #13254a;
+  --navy-700: #1a2f5a;
+  --navy-600: #243b6b;
+  --gold: #c4a052;
+  --gold-600: #8f6f2c;
+  --gold-200: #e9dab2;
+  --gold-50: #fbf6ea;
 
   /* --- Surfaces --------------------------------------------------------- */
-  --cream:           #FAF7F2;
-  --surface:         #FFFFFF;
-  --surface-alt:     #F7F4EE;
-  --sidebar-bg:      var(--navy);
+  --cream: #faf7f2;
+  --cream-2: #f2ede4;
+  --surface: #ffffff;
 
   /* --- Ink -------------------------------------------------------------- */
-  --ink:             #16203A;
-  --ink-2:           #5A6478;
-  --ink-3:           #8A93A6;
-  --ink-inverse:     #FFFFFF;
-  --ink-inverse-2:   #A9B4CC;
+  --ink: #16203a;
+  --ink-2: #4e5870;
+  --ink-3: #737d92;
 
   /* --- Lines ------------------------------------------------------------ */
-  --border:          #E9E4DB;
-  --border-strong:   #DAD3C7;
-  --border-inverse:  rgba(255, 255, 255, 0.10);
+  --line: #e7e1d6;
+  --line-2: #d6cdbd;
 
   /* --- Status ----------------------------------------------------------- */
-  --green:           #2F7D4F;
-  --green-bg:        #E7F4EC;
-  --amber:           #9A7233;
-  --amber-bg:        #FBF2E1;
-  --red:             #A8455A;
-  --red-bg:          #FBE9EC;
-  --slate:           #5A6478;
-  --slate-bg:        #EEF0F4;
-
-  /* --- Tag pills -------------------------------------------------------- */
-  --tag-blue-bg:     #EAF1FB;  --tag-blue-fg:     #3B6FA8;
-  --tag-mint-bg:     #E6F4EE;  --tag-mint-fg:     #2F7D5F;
-  --tag-lavender-bg: #EFEBFA;  --tag-lavender-fg: #5E4FA8;
-  --tag-amber-bg:    #FBF2E3;  --tag-amber-fg:    #9A7233;
-  --tag-pink-bg:     #FBE9EC;  --tag-pink-fg:     #A8455A;
-
-  /* --- Stat card icon tiles --------------------------------------------- */
-  --tile-blue:       #E8F0FB;
-  --tile-amber:      #FDF3E3;
-  --tile-green:      #E9F5EC;
-  --tile-pink:       #FCEAEE;
+  --green: #2a7148;
+  --green-bg: #e5f3ea;
+  --amber: #8a6320;
+  --amber-bg: #faefd9;
+  --blue: #2f5a93;
+  --blue-bg: #e8eff9;
+  --red: #a63d53;
+  --red-bg: #fbe8ec;
+  --slate: #56607a;
+  --slate-bg: #edeff3;
 
   /* --- Type ------------------------------------------------------------- */
   --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-script: "Caveat", "Segoe Script", cursive;
 
-  --text-xs:   0.75rem;
-  --text-sm:   0.8125rem;
-  --text-base: 0.875rem;
-  --text-md:   0.9375rem;
-  --text-lg:   1.0625rem;
-  --text-xl:   1.375rem;
-  --text-2xl:  1.75rem;
-  --text-3xl:  2.125rem;
+  --step--1: clamp(0.8rem, 0.78rem + 0.1vw, 0.86rem);
+  --step-0: clamp(0.94rem, 0.91rem + 0.15vw, 1rem);
+  --step-1: clamp(1.06rem, 1rem + 0.3vw, 1.2rem);
+  --step-2: clamp(1.3rem, 1.18rem + 0.6vw, 1.65rem);
+  --step-3: clamp(1.7rem, 1.42rem + 1.3vw, 2.5rem);
+  --step-4: clamp(2.2rem, 1.6rem + 2.9vw, 3.9rem);
 
-  /* --- Space ------------------------------------------------------------ */
-  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
-  --sp-5: 20px;  --sp-6: 24px;  --sp-7: 32px;  --sp-8: 40px;  --sp-9: 56px;
+  /* --- Shape ------------------------------------------------------------ */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-full: 999px;
 
-  /* --- Radius ----------------------------------------------------------- */
-  --r-sm: 6px;  --r-md: 10px;  --r-lg: 14px;  --r-xl: 20px;  --r-full: 999px;
-
-  /* --- Elevation -------------------------------------------------------- */
-  --shadow-sm: 0 1px 2px rgba(22, 32, 58, 0.04);
-  --shadow-md: 0 2px 8px rgba(22, 32, 58, 0.06);
-  --shadow-lg: 0 8px 28px rgba(22, 32, 58, 0.10);
-  --shadow-xl: 0 20px 48px rgba(22, 32, 58, 0.14);
+  --shadow-sm: 0 1px 2px rgba(15, 30, 61, 0.05);
+  --shadow-md: 0 6px 20px rgba(15, 30, 61, 0.08);
+  --shadow-lg: 0 24px 60px rgba(15, 30, 61, 0.14);
 
   /* --- Layout ----------------------------------------------------------- */
-  --sidebar-w: 248px;
-  --topbar-h: 76px;
-  --mobile-nav-h: 64px;
+  --gutter: clamp(14px, 4vw, 40px);
+  /* Minimum comfortable touch target (WCAG 2.5.5 / Apple HIG). */
+  --tap: 44px;
 
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }

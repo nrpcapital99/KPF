@@ -10,12 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack-query-firebase/react": "^2.1.1",
-    "@tanstack/react-query": "^5.102.8",
     "firebase": "^12.19.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

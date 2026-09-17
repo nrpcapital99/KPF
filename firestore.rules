@@ -1,161 +1,114 @@
 rules_version = '2';
 
+// Kanak Parakh Foundation
+//
+//   Anyone      → may submit ONE well-formed volunteer response. Cannot read anything.
+//   Team        → may read, update the status/note of, and delete responses.
+//   Everything else is denied.
+//
+// A team member is a signed-in Firebase Auth user who is either the original
+// admin (config/foundation.bootstrapUid) or has a document at admins/{uid}.
+// Add team members in the Firebase console: Firestore → admins → Add document,
+// with the person's Auth UID as the document ID.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
 
-    function participantPath() {
-      return /databases/$(database)/documents/participants/$(request.auth.uid);
+    function isTeam() {
+      let foundation = /databases/$(database)/documents/config/foundation;
+      return signedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        || (exists(foundation) && get(foundation).data.bootstrapUid == request.auth.uid)
+      );
     }
 
-    function isMember() {
-      return signedIn()
-        && exists(participantPath())
-        && get(participantPath()).data.status == "ACTIVE";
+    function optionalString(data, key, maxLength) {
+      return !(key in data)
+        || data[key] == null
+        || (data[key] is string && data[key].size() <= maxLength);
     }
 
-    function isStaff() {
-      return isMember()
-        && get(participantPath()).data.role in ["ADMIN", "COORDINATOR"];
+    // ⚠ These lists mirror src/config.ts. Change both together, then redeploy.
+    function interestIds() {
+      return ['education', 'training', 'outreach', 'events', 'fundraising',
+              'social_media', 'content', 'digital_marketing', 'design',
+              'branding', 'research', 'strategy'];
     }
 
-    function isAdmin() {
-      return isMember() && get(participantPath()).data.role == "ADMIN";
+    function commitmentIds() {
+      return ['month', 'w1_3', 'w4_8', 'w8_plus'];
     }
 
-    match /config/foundation {
-      allow get: if true;
-      allow create: if signedIn()
-        && !exists(/databases/$(database)/documents/config/foundation)
-        && request.resource.data.bootstrapUid == request.auth.uid;
-      allow update, delete: if isAdmin();
+    function timeIds() {
+      return ['weekday_mornings', 'weekday_evenings', 'weekends', 'flexible'];
     }
 
-    match /participants/{participantId} {
-      allow get: if isMember() || (signedIn() && request.auth.uid == participantId);
-      allow list: if isMember();
-
-      allow create: if isAdmin()
-        || (
-          isStaff()
-          && request.resource.data.role == "VOLUNTEER"
-          && request.resource.data.status == "ACTIVE"
-          && (
-            request.resource.data.authUid == null
-            || (
-              participantId == request.resource.data.authUid
-              && exists(/databases/$(database)/documents/accountRequests/$(participantId))
-              && get(/databases/$(database)/documents/accountRequests/$(participantId)).data.status
-                == "PENDING"
-            )
-          )
-        )
-        || (
-          signedIn()
-          && participantId == request.auth.uid
-          && request.resource.data.authUid == request.auth.uid
-          && request.resource.data.role == "ADMIN"
-          && request.resource.data.status == "ACTIVE"
-          && getAfter(/databases/$(database)/documents/config/foundation).data.bootstrapUid
-            == request.auth.uid
-        );
-
-      allow update: if isAdmin()
-        || (
-          isStaff()
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            "authUid",
-            "email",
-            "role",
-            "status"
-          ])
-        )
-        || (
-          signedIn()
-          && request.auth.uid == participantId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            "fullName",
-            "phone",
-            "location",
-            "about",
-            "availabilityHoursPerWeek",
-            "expertise",
-            "avatarUrl",
-            "consentToContact"
-          ])
-        );
-      allow delete: if false;
+    function statusIds() {
+      return ['NEW', 'CONTACTED', 'JOINED', 'ARCHIVED'];
     }
 
-    match /accountRequests/{requestId} {
-      allow create: if signedIn()
-        && requestId == request.auth.uid
-        && exists(/databases/$(database)/documents/config/foundation)
-        && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == "PENDING";
-      allow get: if (signedIn() && requestId == request.auth.uid) || isStaff();
-      allow list: if isStaff();
-      allow update: if isStaff()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "status",
-          "decidedAt",
-          "decidedById",
-          "decisionNote"
-        ]);
-      allow delete: if false;
+    function isValidSubmission(d) {
+      return d.keys().hasOnly([
+          'fullName', 'phone', 'email', 'city', 'interests', 'commitment',
+          'preferredTimes', 'message', 'consent', 'status', 'createdAt'
+        ])
+        && d.keys().hasAll(['fullName', 'phone', 'email', 'consent', 'status', 'createdAt'])
+
+        && d.fullName is string
+        && d.fullName.size() >= 1 && d.fullName.size() <= 100
+
+        && d.phone is string
+        && d.phone.size() >= 8 && d.phone.size() <= 20
+        && d.phone.matches('^[0-9+() -]+$')
+
+        && d.email is string
+        && d.email.size() <= 254
+        && d.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
+
+        && optionalString(d, 'city', 80)
+        && optionalString(d, 'message', 1000)
+
+        && (!('interests' in d)
+            || (d.interests is list && d.interests.size() <= 12
+                && d.interests.hasOnly(interestIds())))
+        && (!('preferredTimes' in d)
+            || (d.preferredTimes is list && d.preferredTimes.size() <= 4
+                && d.preferredTimes.hasOnly(timeIds())))
+        && (!('commitment' in d) || d.commitment == null
+            || d.commitment in commitmentIds())
+
+        && d.consent == true
+        && d.status == 'NEW'
+        // Must be the server's clock, so a submission can't be backdated.
+        && d.createdAt == request.time;
     }
 
-    match /slots/{slotId} {
-      allow read: if isMember();
-      allow create, update: if isStaff();
-      allow delete: if isAdmin();
+    match /volunteers/{responseId} {
+      allow create: if isValidSubmission(request.resource.data);
+
+      allow read, delete: if isTeam();
+
+      allow update: if isTeam()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'note', 'updatedAt'])
+        && request.resource.data.status in statusIds()
+        && optionalString(request.resource.data, 'note', 500)
+        && request.resource.data.updatedAt == request.time;
     }
 
-    match /signups/{signupId} {
-      allow read: if isMember();
-
-      // A volunteer may only put their own hand up, only on a slot that is
-      // genuinely open, and only in the REQUESTED state with no hours already
-      // claimed. Capacity is checked by a coordinator at approval time —
-      // Firestore rules cannot count sibling documents.
-      allow create: if isMember()
-        && request.resource.data.participantId == request.auth.uid
-        && request.resource.data.status == "REQUESTED"
-        && (
-          !("hoursLogged" in request.resource.data)
-          || request.resource.data.hoursLogged == null
-        )
-        && exists(/databases/$(database)/documents/slots/$(request.resource.data.slotId))
-        && get(/databases/$(database)/documents/slots/$(request.resource.data.slotId)).data.status
-          == "OPEN";
-
-      allow update: if (
-          // Staff decide: confirm, decline, or record attendance and hours.
-          isStaff()
-          && request.resource.data.participantId == resource.data.participantId
-          && request.resource.data.slotId == resource.data.slotId
-        )
-        || (
-          // A volunteer may withdraw their own signup and nothing else — they
-          // cannot confirm themselves or award themselves hours.
-          isMember()
-          && resource.data.participantId == request.auth.uid
-          && request.resource.data.status == "WITHDRAWN"
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            "status",
-            "decidedAt"
-          ])
-        );
-      allow delete: if false;
+    // Managed from the Firebase console only. A person may check their own entry.
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
     }
 
-    match /projects/{projectId} {
-      allow read: if isMember();
-      allow create, update: if isStaff();
-      allow delete: if isAdmin();
+    // Holds bootstrapUid for the original admin. Read only by these rules.
+    match /config/{docId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {
