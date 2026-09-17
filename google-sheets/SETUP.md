@@ -95,6 +95,11 @@ owns the Firebase project (an Incognito/private window works), and repeat step 5
 **The Kanak Parakh menu doesn't appear**: reload the Sheet, and wait a few
 seconds after it loads.
 
+**"Cannot call SpreadsheetApp.getUi() from this context"**: that's from
+pressing ▶ Run inside Apps Script on an older copy of the script. You don't need
+Run: use the Kanak Parakh menu in the Sheet. (From version 4, Run is safe: it
+checks the connection and prints the result in the Execution log.)
+
 **To stop syncing**: **Kanak Parakh → Turn off automatic sync**. The Sheet
 keeps what it already has.
 

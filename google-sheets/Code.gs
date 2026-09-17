@@ -1,7 +1,7 @@
 /**
  * Kanak Parakh Foundation — volunteer responses → this Google Sheet
  * =================================================================
- * VERSION 3   (the Kanak Parakh menu shows "Script version 3")
+ * VERSION 4   (the Kanak Parakh menu shows "Script version 4")
  *
  * Copies volunteer responses from the app's Firestore database into a tab
  * called "Volunteers". Set-up takes about five minutes: see
@@ -22,7 +22,7 @@
  *   they're left alone and stay with the right person even if you sort.
  */
 
-var SCRIPT_VERSION = '3';
+var SCRIPT_VERSION = '4';
 
 var CONFIG = {
   PROJECT_ID: 'kp-foundation-db18a',
@@ -134,6 +134,61 @@ var LEGACY_INTEREST_LABEL = {
 };
 
 /* ---------------------------------------------------------------------------
+ * Start here
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Kanak Parakh → Check connection.
+ * Reads one response to prove access, and reports exactly what's wrong if it can't.
+ *
+ * This is deliberately the first function in the file, so pressing ▶ Run in the
+ * Apps Script editor runs it (Google asks for permission the first time) and
+ * the result appears in the Execution log below the code.
+ */
+function checkConnection() {
+  var lines = ['Running as: ' + runningAs_()];
+
+  var scopes = grantedScopes_();
+  if (scopes) {
+    var canRead = scopes.some(function (s) { return /\/auth\/(datastore|cloud-platform)$/.test(s); });
+    lines.push('Permission to read the database: ' + (canRead ? 'granted' : 'NOT granted'));
+  }
+
+  try {
+    firestore_('get', '/' + CONFIG.COLLECTION + '?pageSize=1');
+    lines.push('Reading volunteer responses: working');
+    alert_(
+      'Connection OK',
+      lines.join('\n') + '\n\nEverything is set up. Choose Kanak Parakh → Turn on automatic sync.'
+    );
+  } catch (error) {
+    lines.push('Reading volunteer responses: failed');
+    alert_('Connection problem', lines.join('\n') + '\n\n' + explain_(error));
+  }
+}
+
+/**
+ * Shows a message in the Sheet. When run from the Apps Script editor there is
+ * no Sheet on screen, so the message goes to the Execution log instead.
+ */
+function alert_(title, text) {
+  var ui = ui_();
+  if (ui) {
+    ui.alert(title, text, ui.ButtonSet.OK);
+  } else {
+    console.log(title + '\n\n' + text);
+  }
+}
+
+function ui_() {
+  try {
+    return SpreadsheetApp.getUi();
+  } catch (notInSheet) {
+    return null;
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * Columns — same order as the team page's CSV export.
  * ------------------------------------------------------------------------- */
 
@@ -210,7 +265,16 @@ function text_(value) {
  * ------------------------------------------------------------------------- */
 
 function onOpen() {
-  SpreadsheetApp.getUi()
+  var ui = ui_();
+  if (!ui) {
+    console.log(
+      'onOpen builds the Kanak Parakh menu and only works inside the Sheet. ' +
+        'Go back to your Sheet and refresh the page — the menu will appear. ' +
+        'Or, here in the editor, choose checkConnection next to ▶ Run.'
+    );
+    return;
+  }
+  ui
     .createMenu('Kanak Parakh')
     .addItem('Sync now', 'menuSyncNow')
     .addItem('Full resync', 'menuFullResync')
@@ -225,35 +289,31 @@ function onOpen() {
 }
 
 function showVersion() {
-  var ui = SpreadsheetApp.getUi();
-  ui.alert('Kanak Parakh sync — script version ' + SCRIPT_VERSION, 'Running as: ' + runningAs_(), ui.ButtonSet.OK);
+  alert_('Kanak Parakh sync — script version ' + SCRIPT_VERSION, 'Running as: ' + runningAs_());
 }
 
 function turnOnAutomaticSync() {
-  var ui = SpreadsheetApp.getUi();
   try {
     var result = runSync_(true);
     removeTriggers_();
     ScriptApp.newTrigger('syncNow').timeBased().everyMinutes(CONFIG.SYNC_EVERY_MINUTES).create();
     ScriptApp.newTrigger('fullResync').timeBased().everyDays(1).atHour(CONFIG.FULL_CHECK_HOUR).create();
-    ui.alert(
+    alert_(
       'Automatic sync is on',
       result.total + ' response(s) are in the "' + CONFIG.SHEET_NAME + '" tab.\n\n' +
         'New and updated responses will appear within ' + CONFIG.SYNC_EVERY_MINUTES +
-        ' minutes. Use Kanak Parakh → Sync now to update straight away.',
-      ui.ButtonSet.OK
+        ' minutes. Use Kanak Parakh → Sync now to update straight away.'
     );
   } catch (error) {
-    ui.alert("Couldn't turn on sync", explain_(error), ui.ButtonSet.OK);
+    alert_("Couldn't turn on sync", explain_(error));
   }
 }
 
 function turnOffAutomaticSync() {
   removeTriggers_();
-  SpreadsheetApp.getUi().alert(
+  alert_(
     'Automatic sync is off',
-    'The sheet keeps what it has. Use Kanak Parakh → Sync now to update it by hand.',
-    SpreadsheetApp.getUi().ButtonSet.OK
+    'The sheet keeps what it has. Use Kanak Parakh → Sync now to update it by hand.'
   );
 }
 
@@ -269,13 +329,14 @@ function menuRun_(full) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   try {
     var r = runSync_(full);
-    ss.toast(
-      r.added + ' added, ' + r.updated + ' updated' + (full ? ', ' + r.removed + ' removed' : '') + '.',
-      'Volunteers synced',
-      6
-    );
+    var summary = r.added + ' added, ' + r.updated + ' updated' + (full ? ', ' + r.removed + ' removed' : '') + '.';
+    if (ui_()) {
+      ss.toast(summary, 'Volunteers synced', 6);
+    } else {
+      console.log('Volunteers synced: ' + summary);
+    }
   } catch (error) {
-    SpreadsheetApp.getUi().alert("Couldn't sync", explain_(error), SpreadsheetApp.getUi().ButtonSet.OK);
+    alert_("Couldn't sync", explain_(error));
   }
 }
 
@@ -688,30 +749,3 @@ function grantedScopes_() {
   return String(JSON.parse(response.getContentText()).scope || '').split(/\s+/).filter(Boolean);
 }
 
-/**
- * Menu: Kanak Parakh → Check connection.
- * Reads one response to prove access, and reports exactly what's wrong if it can't.
- */
-function checkConnection() {
-  var ui = SpreadsheetApp.getUi();
-  var lines = ['Running as: ' + runningAs_()];
-
-  var scopes = grantedScopes_();
-  if (scopes) {
-    var canRead = scopes.some(function (s) { return /\/auth\/(datastore|cloud-platform)$/.test(s); });
-    lines.push('Permission to read the database: ' + (canRead ? 'granted' : 'NOT granted'));
-  }
-
-  try {
-    firestore_('get', '/' + CONFIG.COLLECTION + '?pageSize=1');
-    lines.push('Reading volunteer responses: working');
-    ui.alert(
-      'Connection OK',
-      lines.join('\n') + '\n\nEverything is set up. Choose Kanak Parakh → Turn on automatic sync.',
-      ui.ButtonSet.OK
-    );
-  } catch (error) {
-    lines.push('Reading volunteer responses: failed');
-    ui.alert('Connection problem', lines.join('\n') + '\n\n' + explain_(error), ui.ButtonSet.OK);
-  }
-}
