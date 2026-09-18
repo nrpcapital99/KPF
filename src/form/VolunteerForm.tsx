@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Brand from "../components/Brand";
-import { AlertIcon, CheckIcon, ChevronDownIcon, LockIcon, LogoMark } from "../components/icons";
+import { AlertIcon, CheckIcon, ChevronDownIcon, LockIcon } from "../components/icons";
+import monogramUrl from "../assets/kpf-monogram.png";
 import {
   CITY_SUGGESTIONS,
   COMMITMENTS,
@@ -171,7 +172,7 @@ export default function VolunteerForm() {
   return (
     <div className="fp">
       <header className="fp__intro">
-        <LogoMark className="fp__watermark" />
+        <img className="fp__watermark" src={monogramUrl} alt="" aria-hidden />
         <div className="fp__intro-inner">
           <Brand />
           <p className="fp__eyebrow">Volunteer with us</p>

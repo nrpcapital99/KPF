@@ -94,6 +94,8 @@ src/
   components/    brand mark and icons
   styles/        design tokens and shared styles
   config.ts      form options, limits, foundation name
+  assets/        the foundation logo and its gold monogram
+public/          favicon and phone home-screen icon (from the monogram)
 google-sheets/   Apps Script that copies responses into a Google Sheet
 scripts/         check-options.mjs: keeps options in step across files
 firestore.rules

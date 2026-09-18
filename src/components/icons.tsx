@@ -17,14 +17,6 @@ const base = {
   focusable: false,
 };
 
-/** The foundation's leaf mark. */
-export const LogoMark = (p: P) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable={false} {...p}>
-    <path d="M12 2c-1.6 3.2-4.4 5.1-4.4 8.6 0 2 1 3.6 2.5 4.6L12 12l1.9 3.2c1.5-1 2.5-2.6 2.5-4.6C16.4 7.1 13.6 5.2 12 2z" />
-    <path d="M11.4 15.6h1.2V22h-1.2z" />
-  </svg>
-);
-
 export const CheckIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="m5 12.5 4.5 4.5L19 7" />

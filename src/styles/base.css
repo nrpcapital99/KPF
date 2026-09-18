@@ -86,48 +86,26 @@ h3 {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  color: inherit;
+  max-width: 100%;
   text-decoration: none;
 }
 
-.brand__mark {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  color: var(--gold);
+.brand__img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
 }
 
-.brand__name {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  line-height: 1.1;
-  white-space: nowrap;
+.brand__img--sm {
+  width: clamp(130px, 34vw, 168px);
 }
 
-.brand__sub {
-  display: block;
-  margin-top: 3px;
-  font-family: var(--font-display);
-  font-size: 0.66rem;
-  letter-spacing: 0.34em;
-  color: var(--gold);
+.brand__img--md {
+  width: clamp(178px, 42vw, 240px);
 }
 
-.brand--sm .brand__mark {
-  width: 24px;
-  height: 24px;
-}
-
-.brand--sm .brand__name {
-  font-size: 0.86rem;
-}
-
-.brand--sm .brand__sub {
-  font-size: 0.56rem;
+.brand__img--lg {
+  width: clamp(200px, 56vw, 268px);
 }
 
 /* --- Buttons -------------------------------------------------------------- */

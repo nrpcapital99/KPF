@@ -1,29 +1,29 @@
-import { LogoMark } from "./icons";
+import logoUrl from "../assets/kpf-logo.png";
+import { FOUNDATION } from "../config";
 
+/** The foundation's logo. Sits on light surfaces only — the wordmark is black. */
 export default function Brand({
   size = "md",
   href,
 }: {
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   href?: string;
 }) {
-  const content = (
-    <>
-      <LogoMark className="brand__mark" />
-      <span>
-        <span className="brand__name">KANAK PARAKH</span>
-        <span className="brand__sub">FOUNDATION</span>
-      </span>
-    </>
+  const image = (
+    <img
+      className={`brand__img brand__img--${size}`}
+      src={logoUrl}
+      width={700}
+      height={111}
+      alt={FOUNDATION.name}
+    />
   );
 
-  const className = `brand${size === "sm" ? " brand--sm" : ""}`;
-
   return href ? (
-    <a className={className} href={href} aria-label="Kanak Parakh Foundation home">
-      {content}
+    <a className="brand" href={href}>
+      {image}
     </a>
   ) : (
-    <span className={className}>{content}</span>
+    <span className="brand">{image}</span>
   );
 }
